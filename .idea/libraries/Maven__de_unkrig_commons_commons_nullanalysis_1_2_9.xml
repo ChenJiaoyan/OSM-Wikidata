@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Maven: de.unkrig.commons:commons-nullanalysis:1.2.9">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/de/unkrig/commons/commons-nullanalysis/1.2.9/commons-nullanalysis-1.2.9.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/de/unkrig/commons/commons-nullanalysis/1.2.9/commons-nullanalysis-1.2.9-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/de/unkrig/commons/commons-nullanalysis/1.2.9/commons-nullanalysis-1.2.9-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
