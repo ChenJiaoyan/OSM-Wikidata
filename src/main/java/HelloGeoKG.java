@@ -28,7 +28,7 @@ public class HelloGeoKG {
             reader = new BufferedReader(new FileReader(WikiCSV), 10 * 1024 * 1024);
             String stringLine = null;
             while ((stringLine = reader.readLine()) != null) {
-                if (stringLine.indexOf(WikiID) == 0) {
+                if (stringLine.indexOf(WikiID) >= 0) {
                     return true;
                 }
             }
@@ -40,7 +40,7 @@ public class HelloGeoKG {
         return false;
     }
 
-    public static void union(String OSMFile, String WikiFile, String triplePath) throws IOException {
+    public static void join (String OSMFile, String WikiFile, String triplePath, String joinPath) throws IOException {
         File OSMfile = new File(OSMFile);
         File Wikifile = new File(WikiFile);
         BufferedReader reader_OSM = null;
@@ -52,10 +52,11 @@ public class HelloGeoKG {
             String newstr = null;
             while ((stringLine = reader_OSM.readLine()) != null) {
                 int start = stringLine.indexOf(",Q") + 1;
-                newstr = stringLine.substring(start); //newstr1记录的是OSM数据中的Wikidata ID
+                newstr = stringLine.substring(start); //newstr记录的是OSM数据中的Wikidata ID
                 if(IDMatch(newstr, WikiFile)) {
                     System.out.println(stringLine);
-                    HandleFiles.WirteFile(triplePath, stringLine + "\r\n");
+                    //HandleFiles.WirteFile(triplePath, stringLine + "\r\n");
+                    HandleFiles.WriteFile(joinPath, newstr + "\r\n"); //joinPath会存下OSM和Wikidata做union时的重合部分
                 }
             }
         } catch (FileNotFoundException e) {
@@ -63,7 +64,35 @@ public class HelloGeoKG {
         }
     }
 
-    public static void main(String args[]) throws IOException {
+    public static void union (String OSMFile, String WikiFile, String JoinFile, String triplePath) throws IOException {
+        File OSMfile = new File(OSMFile);
+        File Wikifile = new File(WikiFile);
+        File Joinfile = new File(JoinFile);
+        BufferedReader reader_OSM = null;
+        BufferedReader reader_Wiki = null;
+        BufferedReader reader_Join = null;
+        try {
+            reader_OSM = new BufferedReader(new FileReader(OSMfile), 10 * 1024 * 1024);
+            reader_Wiki = new BufferedReader(new FileReader(Wikifile), 10 * 1024 * 1024);
+            reader_Join = new BufferedReader(new FileReader(Joinfile), 10 * 1024 * 1024);
+            String stringLine = null;
+            String wikistr = null;
+            while ((stringLine = reader_OSM.readLine()) != null) {
+                System.out.println(stringLine);
+                HandleFiles.WriteFile(triplePath, stringLine + "\r\n");
+            }
+            while ((wikistr = reader_Wiki.readLine()) != null) {
+                if(!IDMatch(wikistr, JoinFile)) {
+                    System.out.println(wikistr);
+                    HandleFiles.WriteFile(triplePath, wikistr + "\r\n");
+                }
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void main (String args[]) throws IOException {
         System.out.printf("This project is to study (1) the linkage between OSM and WikiData, " +
                 "(2) the linkage between OSM and POIs \n");
         System.out.println("Have Fun!");
@@ -74,7 +103,15 @@ public class HelloGeoKG {
         String WikiFile = "F:\\WikiwithOSM.csv";
         String triplePath_China = "F:\\OSM-Wikidata_China.csv";
         String triplePath_Taiwan = "F:\\OSM-Wikidata_Taiwan.csv";
-        union(OSMFile_Taiwan, WikiFile, triplePath_Taiwan);
-        union(OSMFile_China, WikiFile, triplePath_China);
+        String joinPath_China = "F:\\OSM-Wikidata_Join_China.csv";
+        String joinPath_Taiwan = "F:\\OSM-Wikidata_Join_Taiwan.csv";
+        String unionPath_China = "F:\\OSM-Wikidata_Union_China.csv";
+        String unionPath_Taiwan = "F:\\OSM-Wikidata_Union_Taiwan.csv";
+        //join(OSMFile_Taiwan, WikiFile, triplePath_Taiwan,joinPath_Taiwan);
+        //join(OSMFile_China, WikiFile, triplePath_China,joinPath_China);
+        union (OSMFile_Taiwan, WikiFile, joinPath_Taiwan, unionPath_Taiwan);
+        union (OSMFile_China, WikiFile, joinPath_China, unionPath_China);
+        //String str = "member type=\"node\" ref=";
+        //System.out.println(str.length());
     }
 }

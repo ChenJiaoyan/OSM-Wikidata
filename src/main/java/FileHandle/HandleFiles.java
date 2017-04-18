@@ -108,7 +108,7 @@ public class HandleFiles {
         else
             return null;
     }
-    public static void WirteFile(String filePath, String str) {
+    public static void WriteFile(String filePath, String str) {
         File file = new File(filePath);
         try (FileOutputStream fop = new FileOutputStream(file, true)) {
             // 这里设置true是为了向file中追加数据，要不然每次都是自动覆盖原先的数据，所以说，测试运行的时候记得把原来的数据清空
@@ -148,11 +148,13 @@ public class HandleFiles {
         return str;
     }
     public static String record(int i, String str) {
-        String buf = "";
-        while (str.charAt(i) != '\"') { // buf记录下""里面的内容
+        /*String buf = "";
+        while (str.charAt(i) != '\"' && i<str.length()) { // buf记录下""里面的内容
             buf = buf + str.charAt(i);
             i++;
-        }
+        }*/
+        int j = str.indexOf("\"", i);
+        String buf = str.substring(i, j); // buf记录下""里面的内容
         return buf;
     }
 }

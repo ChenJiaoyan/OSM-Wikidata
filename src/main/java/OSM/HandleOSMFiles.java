@@ -51,7 +51,7 @@ public class HandleOSMFiles {
         quantity[0][2] = 有某一key的relation id数量
         quantity[1][2] = relation id数量
          */
-        int i;
+        int i = 0;
         String buf;
         int num = 0;
         try {
@@ -63,11 +63,10 @@ public class HandleOSMFiles {
                 for(int r=0; r<3; r++) {
                     if(newstr.indexOf(feature[r] + " id") > 0) {
                         quantity[1][r]++;
-                        /*i = feature[r].length() + 6;
-                        buf = HandleFiles.record(i, newstr);
-                        HandleFiles.WirteFile(OSMPath, feature[r] + " id" + buf + "\r\t");*/
                         int j = 0;
                         String name = null;
+                        String name_en = null;
+                        String name_zh = null;
                         ArrayList strGroup = new ArrayList();
                         while(newstr.indexOf("<tag k=\"" + key + "\" v=\"") < 0 && newstr.indexOf("</" + feature[r] + ">") < 0) {
                             if(newstr.indexOf(feature[r] + " id") > 0) {
@@ -76,9 +75,15 @@ public class HandleOSMFiles {
                                 strGroup.add(buf); //将可能共有相同key的node id/way id/relation id全部记录在strGroup字符数组中
                                 j++;
                             }
-                            if(newstr.indexOf("<tag k=\"name\" v=\"") == 0) {
+                            if(newstr.indexOf("<tag k=\"name\" v=\"") >= 0) {
                                 name = HandleFiles.record(17, newstr);
                             }
+                            /*if(newstr.indexOf("<tag k=\"name:en\" v=\"") >= 0) {
+                                name_en = HandleFiles.record(20, newstr);
+                            }
+                            if(newstr.indexOf("<tag k=\"name:zh\" v=\"") >= 0) {
+                                name_zh = HandleFiles.record(20, newstr);
+                            }*/
                             stringLine = reader.readLine();
                             newstr = new String(stringLine.getBytes(encode), encode).trim();
                         }
@@ -89,21 +94,23 @@ public class HandleOSMFiles {
                             buf = HandleFiles.record(i, newstr); //buf记录下wikidata ID
                             for(int k=0; k<j; k++) {
                                 System.out.println(feature[r] + " ID: " + strGroup.get(k) + "\tName: " + name + "\t" + buf);
-                                HandleFiles.WirteFile(resultPath, feature[r] + "," + strGroup.get(k) + "," + name + "," + buf + "\r\n");
+                                HandleFiles.WriteFile(resultPath, feature[r] + "," + strGroup.get(k) + "," + name + "," + buf + "\r\n");
+                                //System.out.println(feature[r] + " ID: " + strGroup.get(k) + "\tName: " + name + "\tName_en: " + name_en + "\tName_zh:" + name_zh + "\t" + buf);
+                                //HandleFiles.WriteFile(resultPath, feature[r] + "," + strGroup.get(k) + "," + name_en + "," + name_zh + "," + buf + "\r\n");
                             }
                         }
                     }
                 }
             }
             reader.close();
-            HandleFiles.WirteFile("F:/OSM with Wikidata Key.txt", country + "\r\n");
+            HandleFiles.WriteFile("F:/OSM with Wikidata Key.txt", country + "\r\n");
             for(i=0; i<2; i++) {
                 for(int j=0; j<3; j++) {
-                    HandleFiles.WirteFile("F:/OSM with Wikidata Key.txt", String.valueOf(quantity[i][j]) + "\r\t");
+                    HandleFiles.WriteFile("F:/OSM with Wikidata Key.txt", String.valueOf(quantity[i][j]) + "\r\t");
                 }
-                HandleFiles.WirteFile("F:/OSM with Wikidata Key.txt", "\r\n");
+                HandleFiles.WriteFile("F:/OSM with Wikidata Key.txt", "\r\n");
             }
-            HandleFiles.WirteFile("F:/OSM with Wikidata Key.txt", String.valueOf(num) + "\r\n");
+            HandleFiles.WriteFile("F:/OSM with Wikidata Key.txt", String.valueOf(num) + "\r\n");
         } catch (FileNotFoundException e) {
         }
     }
