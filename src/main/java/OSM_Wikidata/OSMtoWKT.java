@@ -4,6 +4,10 @@ package OSM_Wikidata;
  * Created by SmallApple on 2017/4/18.
  */
 
+import FileHandle.HandleFiles;
+import exports.DOTExporter;
+import exports.GraphMLExporter;
+import exports.NAETOExporter;
 import org.jgrapht.alg.ConnectivityInspector;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DefaultWeightedEdge;
@@ -12,9 +16,6 @@ import org.jgrapht.graph.WeightedPseudograph;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
-import exports.DOTExporter;
-import exports.GraphMLExporter;
-import exports.NAETOExporter;
 
 import javax.management.relation.Relation;
 import javax.xml.parsers.ParserConfigurationException;
@@ -36,6 +37,7 @@ public class OSMtoWKT extends DefaultHandler {
     private final static String XML_TAG_WAY = "way";
     private final static String XML_TAG_ND = "nd";
     private final static String XML_TAG_REF = "ref";
+    private final static String XML_TAG_NAME = "name"; //需要记录下value的tag key
     private final static String FILE_EXT_WKT = "wkt";
     private final static String FILE_EXT_OSM = "osm";
     private final static String WKT_TAG_BEGIN = "LINESTRING (";
@@ -48,9 +50,9 @@ public class OSMtoWKT extends DefaultHandler {
     private final static String WKT_TAG_MARKSEP1 = ",";
     private final static String WKT_TAG_MARKSEP2 = " ";
 
-    private WeightedPseudograph<Long, DefaultWeightedEdge> weightedGraph;
-    private WeightedPseudograph<Long, DefaultWeightedEdge> testweightedGraph;
-    private HashSet<Long> fixCompletenessAddedLandmarks = new HashSet<Long>();
+    private WeightedPseudograph<String, DefaultWeightedEdge> weightedGraph;
+    private WeightedPseudograph<String, DefaultWeightedEdge> testweightedGraph;
+    private HashSet<String> fixCompletenessAddedLandmarks = new HashSet<String>();
     private HashSet<String> edgesAlreadyAdded = new HashSet<String>();
     static int precisonFloating = 3; // use 3 decimals after comma for rounding
     double epsilon = 0.0001;
@@ -68,7 +70,9 @@ public class OSMtoWKT extends DefaultHandler {
     private String visiblecontents = "";
     private String kvcontentsW = "";
     private String kvcontentsN = "";
-    private String pointids = "";
+    //private String pointids = "";
+    private Vector<String> pointids;
+    private Vector<Nodes> points;
     private Nodes nodes;
     private Way way;
     private Relation relation;
@@ -77,43 +81,46 @@ public class OSMtoWKT extends DefaultHandler {
     private List<Way> waylist;
     private List<Relation> relationlist;
 
+    /**
+     * 用streets和landmarks内存会溢出，需要另寻他法——先存到文件中保存起来，再进行匹配
+     * 这一方法在OSM2WKT中实现
+     */
+    private HashMap<String, Vector<String>> streets;
+    private HashMap<String, Nodes> landmarks;
+    //private String NodePath = "F:\\NodePath.txt";
+    //private String WayPath = "F:\\WayPath.txt";
+    private String RelationPath = "F:\\Relation.txt";
+
     boolean Type = false, temTympe = false;
     private Integer countp = 0;
     private Integer countw = 0;
-    private Integer plagN = 0; //用于只提取前两个标签
-    private Integer plagW = 0; //用于只提取前两个标签
+    //这俩值作为记录name的索引
+    private Integer plagN = 0;
+    private Integer plagW = 0;
+    //private Integer plagN = 0; //用于只提取前四个标签
+    //private Integer plagW = 0; //用于只提取前两个标签
 
     @Override
     public void startDocument() throws SAXException {
         nodeslist = new ArrayList<Nodes>();
         waylist = new ArrayList<Way>();
         relationlist = new ArrayList<Relation>();
+        /**
+         * 用streets和landmarks内存会溢出，需要另寻他法
+         */
+        landmarks = new HashMap<String, Nodes>();
+        streets = new HashMap<String, Vector<String>>();
         System.out.println("正在读取XML(OSM)文档，如果数据量过大需要一段时间，请耐心等待……");
     }
 
     @Override
     public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
-        /*if (!localName.equals(XML_TAG_OSM)) {
-            System.out.println("invalid osm file, root element is "
-                    + localName + " but should be " + XML_TAG_OSM);
-        }*/
-        if ("node".equals(qName)) {
+        // 对node进行操作
+        if ("node".equals(qName)) { //记录下node的id和经纬度
             if (attributes.getValue("id") != null && attributes.getValue("id") != "")
                 idcontents = attributes.getValue("id");
             else
                 idcontents = "0";
-            if (attributes.getValue("version") != null && attributes.getValue("version") != "")
-                versioncontents = attributes.getValue("version");
-            else
-                versioncontents = "0";
-            if (attributes.getValue("uid") != null && attributes.getValue("uid") != "")
-                uidioncontents = attributes.getValue("uid");
-            else
-                uidioncontents = "0";
-            if (attributes.getValue("user") != null && attributes.getValue("user") != "")
-                usercontents = attributes.getValue("user");
-            else
-                usercontents = "0";
             if (attributes.getValue("lon") != null && attributes.getValue("lon") != "")
                 loncontents = attributes.getValue("lon");
             else
@@ -122,36 +129,8 @@ public class OSMtoWKT extends DefaultHandler {
                 latcontents = attributes.getValue("lat");
             else
                 latcontents = "0";
-            if (attributes.getValue("changeset") != null && attributes.getValue("changeset") != "")
-                changesetcontents = attributes.getValue("changeset");
-            else
-                changesetcontents = "0";
-            if (attributes.getValue("timestamp") != null && attributes.getValue("timestamp") != "")
-                timestampcontents = attributes.getValue("timestamp");
-            else
-                timestampcontents = "0";
-            // if(attributes.getValue("visible") != null&&attributes.getValue("visible") != "") //不再存储visible字段
-            // visiblecontents = attributes.getValue("visible");
-            // else
-            // visiblecontents = "0";
-            curretntag = "node";
-            countp++;
-        }
-        if ("node".equals(curretntag) && "tag".equals(qName) && plagN < 4) {
-            String kcontents = "";
-            String vcontents = "";
-            kcontents = attributes.getValue("k");
-            vcontents = attributes.getValue("v");
-            kvcontentsN += kcontents + " = " + vcontents + "; ";
-            plagN++; //用于只提取前4个标签
-        }
-
-        if ("way".equals(qName)) {
-            //对way操作
-            if (attributes.getValue("id") != null && attributes.getValue("id") != "")
-                idcontents = attributes.getValue("id");
-            else
-                idcontents = "0";
+            //暂时不需要进行的操作，我们只需要记录下node的id和经纬度
+            /*
             if (attributes.getValue("version") != null && attributes.getValue("version") != "")
                 versioncontents = attributes.getValue("version");
             else
@@ -172,7 +151,71 @@ public class OSMtoWKT extends DefaultHandler {
                 timestampcontents = attributes.getValue("timestamp");
             else
                 timestampcontents = "0";
-            // if(attributes.getValue("visible") != null&&attributes.getValue("visible") != "") //不再存储visible字段
+            */
+            // if(attributes.getValue("visible") != null && attributes.getValue("visible") != "") //不再存储visible字段
+            // visiblecontents = attributes.getValue("visible");
+            // else
+            // visiblecontents = "0";
+            curretntag = "node";
+            countp++;
+        }
+
+        //if ("node".equals(curretntag) && "tag".equals(qName) && plagN < 4) {
+        if ("node".equals(curretntag) && "tag".equals(qName) && plagN == 0) {
+            String kcontents = attributes.getValue("k");
+            String vcontents = attributes.getValue("v");
+            if(!(kcontents.equals(XML_TAG_NAME))) { //提取出OSM实体way的name，没有的话为空
+                kcontents = "";
+                vcontents = "";
+                kvcontentsN = "";
+            }
+            else {
+                plagN = 1;
+                //kvcontentsN = kcontents + "=" + vcontents;
+                kvcontentsN = vcontents;
+            }
+            //plagW++;//用于只提取前四个标签
+        }
+        if("node".equals(curretntag) && "tag".equals(qName) && attributes.getValue("k").equals(XML_TAG_NAME + ":zh")) {
+            String kcontents = attributes.getValue("k");
+            String vcontents = attributes.getValue("v");
+            //kvcontentsN = kcontents + "=" + vcontents;
+            kvcontentsN = vcontents;
+            plagN = 1;
+        }
+
+        //对way操作
+        if ("way".equals(qName)) {
+            pointids = new Vector<String>();
+            points = new Vector<Nodes>();
+            if (attributes.getValue("id") != null && attributes.getValue("id") != "")
+                idcontents = attributes.getValue("id");
+            else
+                idcontents = "0";
+            //暂时不需要进行的操作，我们只需要记录下way的id
+            /*
+            if (attributes.getValue("version") != null && attributes.getValue("version") != "")
+                versioncontents = attributes.getValue("version");
+            else
+                versioncontents = "0";
+            if (attributes.getValue("uid") != null && attributes.getValue("uid") != "")
+                uidioncontents = attributes.getValue("uid");
+            else
+                uidioncontents = "0";
+            if (attributes.getValue("user") != null && attributes.getValue("user") != "")
+                usercontents = attributes.getValue("user");
+            else
+                usercontents = "0";
+            if (attributes.getValue("changeset") != null && attributes.getValue("changeset") != "")
+                changesetcontents = attributes.getValue("changeset");
+            else
+                changesetcontents = "0";
+            if (attributes.getValue("timestamp") != null && attributes.getValue("timestamp") != "")
+                timestampcontents = attributes.getValue("timestamp");
+            else
+                timestampcontents = "0";
+            */
+            // if(attributes.getValue("visible") != null && attributes.getValue("visible") != "") //不再存储visible字段
             // visiblecontents=attributes.getValue("visible");
             // else
             // visiblecontents = "0";
@@ -180,19 +223,33 @@ public class OSMtoWKT extends DefaultHandler {
             countw++;
         }
 
-        if ("way".equals(curretntag) && "tag".equals(qName) && plagW < 2) {
-            String kcontents = "";
-            String vcontents = "";
-            kcontents = attributes.getValue("k");
-            vcontents = attributes.getValue("v");
-            kvcontentsW += kcontents + " = " + vcontents + "; ";
-            plagW++;//用于只提取前两个标签
+        //if ("way".equals(curretntag) && "tag".equals(qName) && plagW < 2) {
+        if ("way".equals(curretntag) && "tag".equals(qName) && plagW == 0) {
+            String kcontents = attributes.getValue("k");
+            String vcontents = attributes.getValue("v");
+            if(!(kcontents.equals(XML_TAG_NAME))) { //提取出OSM实体way的name，没有的话为空
+                kcontents = "";
+                vcontents = "";
+                kvcontentsW = "";
+            }
+            else {
+                plagW = 1;
+                //kvcontentsW = kcontents + "=" + vcontents;
+                kvcontentsW = vcontents;
+            }
+            //plagW++;//用于只提取前两个标签
         }
-        //对nd操作
-        if ("way".equals(curretntag) && "nd".equals(qName)) {
-            String ref = "";
-            ref = attributes.getValue("ref");
-            pointids += ref + ";";
+        if("way".equals(curretntag) && "tag".equals(qName) && attributes.getValue("k").equals(XML_TAG_NAME + ":zh")) {
+            String kcontents = attributes.getValue("k");
+            String vcontents = attributes.getValue("v");
+            //kvcontentsW = kcontents + "=" + vcontents;
+            kvcontentsW = vcontents;
+            plagW = 1;
+        }
+
+        if ("way".equals(curretntag) && "nd".equals(qName)) { //对way的引用node操作
+            String ref = attributes.getValue("ref");
+            pointids.add(ref);
         }
     }
 
@@ -202,33 +259,35 @@ public class OSMtoWKT extends DefaultHandler {
         if ("node".equals(qName)) {
             nodes = new Nodes();
             nodes.setId(idcontents);
+            nodes.setLon(loncontents);
+            nodes.setLat(latcontents);
+            nodes.setTag(kvcontentsN);
+            /*
             nodes.setVersion(versioncontents);
             nodes.setUid(uidioncontents);
             nodes.setUser(usercontents);
-            nodes.setLon(loncontents);
-            nodes.setLat(latcontents);
             nodes.setChangeset(changesetcontents);
             nodes.setTimestamp(timestampcontents);
-            nodes.setVisible(visiblecontents);
-            nodes.setTag(kvcontentsN);
+            //nodes.setVisible(visiblecontents);
+            */
             nodeslist.add(nodes);
-            //对要存满的waylist进行处理
+            /**
+             * 用landmarks内存会溢出，需要另寻他法
+             */
+            landmarks.put(nodes.getId(), nodes);
+
+            //System.out.println(landmarks.size() + "\t" + nodeslist.size());
+            //对要存满的nodelist进行处理
             if (nodeslist.size() >= 100000) {
                 for (int i = 0; i < nodeslist.size(); i++) {
-                    System.out.println("Point Id: " + nodeslist.get(i).getId() + " version: " + nodeslist.get(i).getVersion() + " timestamp: " + nodeslist.get(i).getTimestamp() + " tag: " + nodeslist.get(i).getTag());
-                    Long.parseLong(nodeslist.get(i).getId());
-                    Integer.parseInt(nodeslist.get(i).getVersion());
-                    nodeslist.get(i).getLon();
-                    nodeslist.get(i).getLat();
-                    Long.parseLong(nodeslist.get(i).getUid());
-                    nodeslist.get(i).getUser();
-                    nodeslist.get(i).getChangeset();
-                    Timestamp.valueOf(nodeslist.get(i).getTimestamp().replace("T", " ").replace("Z", ""));
-                    nodeslist.get(i).getVisible();
-                    nodeslist.get(i).getTag();
+                    System.out.println("Node Id: " + nodeslist.get(i).getId() + "\tName: " + nodeslist.get(i).getTag());
+                    //landmarks.put(nodeslist.get(i).getId(), nodeslist.get(i));
                 }
                 nodeslist.clear();
             }
+            // 可以将节点的数据记录到文件里
+            // HandleFiles.WriteFile(NodePATH,nodes);
+
             kvcontentsN = "";
             curretntag = "";
             plagN = 0;
@@ -240,70 +299,56 @@ public class OSMtoWKT extends DefaultHandler {
             //对前面没有处理完的nodeslist集合进行处理
             if (!nodeslist.isEmpty()) {
                 for (int i = 0; i < nodeslist.size(); i++) {
-                    System.out.println("Point Id: " + nodeslist.get(i).getId() + " version: " + nodeslist.get(i).getVersion() + " timestamp: " + nodeslist.get(i).getTimestamp() + " tag: " + nodeslist.get(i).getTag());
-                    Long.parseLong(nodeslist.get(i).getId());
-                    Integer.parseInt(nodeslist.get(i).getVersion());
-                    nodeslist.get(i).getLon();
-                    nodeslist.get(i).getLat();
-                    Long.parseLong(nodeslist.get(i).getUid());
-                    nodeslist.get(i).getUser();
-                    nodeslist.get(i).getChangeset();
-                    Timestamp.valueOf(nodeslist.get(i).getTimestamp().replace("T", " ").replace("Z", ""));
-                    nodeslist.get(i).getVisible();
-                    nodeslist.get(i).getTag();
+                    System.out.println("Node Id: " + nodeslist.get(i).getId() + "\tName: " + nodeslist.get(i).getTag());
+                    //landmarks.put(nodeslist.get(i).getId(), nodeslist.get(i));
                 }
                 nodeslist.clear();
             }
-
             way = new Way();
             nodes = new Nodes();
             way.setId(idcontents);
+            way.setTag(kvcontentsW);
+            way.setPointids(pointids);
+            /*
             way.setVersion(versioncontents);
             way.setUid(uidioncontents);
             way.setUser(usercontents);
             way.setChangeset(changesetcontents);
             way.setTimestamp(timestampcontents);
-            way.setTag(kvcontentsW);
-            way.setPointids(pointids);
-            way.setVisible(visiblecontents);
-
+            //way.setVisible(visiblecontents);
+            */
             waylist.add(way);
-
+            /**
+             * 用streets内存会溢出，需要另寻他法
+             */
+            streets.put(way.getId(), way.getPointids());
             //对要存满的waylist进行处理
             if (waylist.size() >= 100000) {
                 for (int i = 0; i < waylist.size(); i++) {
+                    System.out.println("Way Id:" + waylist.get(i).getId() + "\tName: " + waylist.get(i).getTag());
+                    //streets.put(waylist.get(i).getId(), waylist.get(i).getPointids());
                     try {
                         if (polygonOrPolyline(waylist.get(i).getPointids()))
                             Type = true;//polygon;
                         else
                             Type = false;
-                    /*if(Type == true){
-                        //poly(id,version,userid,username,changeset,timestamp,visible,tag,pointids,polyType,updateData);
-                        System.out.println(pointids);
-                    }
-                    if(Type == false){
-                        //poly(id,version,userid,username,changeset,timestamp,visible,tag,pointids,polyType,updateData);
-                        System.out.println(pointids);
-                    }*/
-                        System.out.println("Poly Id:" + waylist.get(i).getId() + " version: " + waylist.get(i).getVersion() + " tag: " + waylist.get(i).getTag());
-                        Long.parseLong(waylist.get(i).getId());
-                        Integer.parseInt(waylist.get(i).getVersion());
-                        Long.parseLong(waylist.get(i).getUid());
-                        waylist.get(i).getUser();
-                        waylist.get(i).getChangeset();
-                        Timestamp.valueOf(waylist.get(i).getTimestamp().replace("T", " ").replace("Z", ""));
-                        waylist.get(i).getVisible();
-                        waylist.get(i).getTag();
-                        waylist.get(i).getPointids();
+                        if(Type == true){
+                            System.out.println("Polygon" + waylist.get(i).getPointids());
+                        }
+                        if(Type == false){
+                            System.out.println("Polyline" + waylist.get(i).getPointids());
+                        }
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
                 }
                 waylist.clear();
             }
+            // 可以将路径的数据记录到文件里
+            // HandleFiles.WriteFile(WayPATH,way);
             kvcontentsW = "";
             curretntag = "";
-            pointids = "";
+            pointids = null;
             plagW = 0;
             way = null;
         }
@@ -314,21 +359,19 @@ public class OSMtoWKT extends DefaultHandler {
         //对前面没有处理完的waylist进行处理
         if (!waylist.isEmpty()) {
             for (int i = 0; i < waylist.size(); i++) {
+                //streets.put(waylist.get(i).getId(), waylist.get(i).getPointids());
+                System.out.println("Way Id:" + waylist.get(i).getId() + "\tName: " + waylist.get(i).getTag());
                 try {
                     if (polygonOrPolyline(waylist.get(i).getPointids()))
                         Type = true; //polygon;
                     else
                         Type = false;
-                    System.out.println("Poly Id: " + waylist.get(i).getId() + " version: " + waylist.get(i).getVersion() + " tag: " + waylist.get(i).getTag());
-                    Long.parseLong(waylist.get(i).getId());
-                    Integer.parseInt(waylist.get(i).getVersion());
-                    Long.parseLong(waylist.get(i).getUid());
-                    waylist.get(i).getUser();
-                    waylist.get(i).getChangeset();
-                    Timestamp.valueOf(waylist.get(i).getTimestamp().replace("T", " ").replace("Z", ""));
-                    waylist.get(i).getVisible();
-                    waylist.get(i).getTag();
-                    waylist.get(i).getPointids();
+                    if(Type == true){
+                        System.out.println("Polygon" + waylist.get(i).getPointids());
+                    }
+                    if(Type == false){
+                        System.out.println("Polyline" + waylist.get(i).getPointids());
+                    }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -337,44 +380,24 @@ public class OSMtoWKT extends DefaultHandler {
         }
     }
 
-    private boolean polygonOrPolyline(String nodes) {
+    private boolean polygonOrPolyline(Vector<String> nodes) {
         //用于区分线和面数据
         //If return true, the poly is a polygon.
-        if (nodes.length() < 1)
+        if (nodes == null)
             return false;
-        String[] ss = nodes.split(";");
-        if (ss.length < 4)
+        int size = nodes.size();
+        if (size < 4)
             return false;
-        if (ss[0].equals(ss[ss.length - 1]))
+        if ( nodes.get(0).equals(nodes.get(size-1)) )
             return true;
         else
             return false;
     }
 
-    private class Landmark {
-        long id = 0;
-        double latitude = 0;
-        double longitude = 0;
-        double x = 0;
-        double y = 0;
-
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null) return false;
-            if (!this.getClass().isInstance(o)) return false;
-            Landmark ol = (Landmark) o;
-
-            return (this.id == ol.id);
-        }
-    }
-
-    private HashMap<Long, Vector<Long>> streets = new HashMap<Long, Vector<Long>>();
-    private HashMap<Long, Landmark> landmarks = new HashMap<Long, Landmark>();
-
-    private Long nextLandmarkIndex() {
+    private Long nextNodeIndex() {
         Long i = new Long(landmarks.size());
         for (; true; i++) {
-            if (landmarks.containsKey(i) == false && i > 0) {
+            if (landmarks.containsKey(String.valueOf(i)) == false && i > 0) {
                 //System.out.println("i=" + i);
                 return i;
             }
@@ -389,7 +412,6 @@ public class OSMtoWKT extends DefaultHandler {
 
     private boolean readOSM(String filePath) {
         System.out.println("reading in openstreetmap xml ...");
-
         try {
             // check if file exists
             File file = new File(filePath);
@@ -397,14 +419,7 @@ public class OSMtoWKT extends DefaultHandler {
                 System.out.println("osm file " + filePath + " does not exist");
                 return false;
             }
-
             // read in xml
-            /*DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-            DocumentBuilder db = dbf.newDocumentBuilder();
-            InputStream is = new FileInputStream(file);
-            //Document doc = db.parse(file);
-            Document doc = db.parse(is);
-            doc.getDocumentElement().normalize();*/
             InputStream inStream = null;
             try {
                 inStream = new FileInputStream(filePath);
@@ -426,88 +441,11 @@ public class OSMtoWKT extends DefaultHandler {
                     e.printStackTrace();
                 }
             }
-            // check for valid openstreetmap xml root tag
-            // this works because we are currently at the root element
-			/*
-			 *	Even this might work
-			 *  Element root = doc.getDocumentElement();
-			 *
-			 */
-
-            /*// read in all landmarks
-            NodeList landmarkList = doc.getElementsByTagName(XML_TAG_NODE);
-            for( int s=0; s<landmarkList.getLength(); s++ ){
-                Node markNode = landmarkList.item(s);
-                if( markNode.getNodeType() != Node.ELEMENT_NODE ) continue;
-                Element markElement = (Element)markNode;
-                // http://stackoverflow.com/questions/132564/whats-the-difference-between-an-element-and-a-node-in-xml
-
-                Attr idAttr = markElement.getAttributeNode(XML_TAG_ID);
-                Attr idLat = markElement.getAttributeNode(XML_TAG_LAT);
-                Attr idLon = markElement.getAttributeNode(XML_TAG_LON);
-
-                if(idAttr == null || idLat == null || idLon == null){
-                    System.out.println("missing attribute in landmark "
-                            + markNode.getNodeValue());
-                    continue;
-                }
-
-                Landmark landObj = new Landmark();
-                landObj.id = Long.valueOf(idAttr.getValue());
-                landObj.latitude = Double.valueOf(idLat.getValue());
-                landObj.longitude = Double.valueOf(idLon.getValue());
-
-                landmarks.put(landObj.id, landObj);
-            }
-
-            // read in all streets
-            NodeList wayList = doc.getElementsByTagName(XML_TAG_WAY);
-            //NodeList wayList = (NodeList) doc.selectNodes(XML_TAG_WAY);
-            for( int s=0; s<wayList.getLength(); s++ ){
-                Node wayNode = wayList.item(s);
-                if( wayNode.getNodeType() != Node.ELEMENT_NODE ) continue;
-                Element wayElement = (Element)wayNode;
-
-                Attr idAttr = wayElement.getAttributeNode(XML_TAG_ID);
-                if(idAttr == null){
-                    System.out.println("missing attribute in street "
-                            + wayNode.getNodeValue());
-                    continue;
-                }
-
-                Long streetId = Long.valueOf(idAttr.getValue());
-                Vector<Long> streetLandmarks = new Vector<Long>();
-
-                // get landmarks for this street
-                NodeList ndList = wayNode.getChildNodes();
-                for( int t=0; t<ndList.getLength(); t++){
-                    Node ndNode = ndList.item(t);
-                    if( ndNode.getNodeType() != Node.ELEMENT_NODE ) continue;
-                    if( ndNode.getNodeName() != XML_TAG_ND) continue;
-                    Element ndElement = (Element)ndNode;
-
-                    Attr refAttr = ndElement.getAttributeNode(XML_TAG_REF);
-                    if(refAttr == null){
-                        System.out.println("missing attribute in street landmark " + ndNode.getNodeValue());
-                    }
-
-                    streetLandmarks.add(Long.valueOf(refAttr.getValue()));
-                }
-
-                // if we found landmarks for this street add street
-                if(!streetLandmarks.isEmpty()){
-                    streets.put(streetId, streetLandmarks);
-                }else{
-                    System.out.println("found no landmark childs for street " + wayNode.getNodeValue());
-                }
-            }*/
         } catch (Exception e) {
             System.out.println("reading osm file failed: " + e.getLocalizedMessage());
             e.printStackTrace();
             return false;
         }
-        /*System.out.println("parsing osm found " + streets.size() + " streets and "
-                + landmarks.size() + " landmarks");*/
         return true;
     }
 
@@ -544,25 +482,24 @@ public class OSMtoWKT extends DefaultHandler {
     }
 
     //****************************************************************************
-    private boolean readWkt(String filename) {
+    private boolean readWkt(String filePath) {
         System.out.println("reading in wkt format ...");
         try {
             // check is file exists
-            File file = new File(filename);
+            File file = new File(filePath);
             if (!file.exists()) {
-                System.out.println("wkt file " + filename + " does not exist");
+                System.out.println("wkt file " + filePath + " does not exist");
                 return false;
             }
             FileReader freader = new FileReader(file);
             BufferedReader reader = new BufferedReader(freader);
-            long markid = 0;
-            long streetid = 0;
+            long nodeid = 0;
+            long wayid = 0;
             while (reader.ready()) {
-                String line = readNestedContents(reader);
-                line = line.trim();
+                String line = readNestedContents(reader).trim();
                 if (line.length() == 0) continue;
                 String parts[] = line.split(WKT_TAG_MARKSEP1);
-                Vector<Long> street = new Vector<Long>();
+                Vector<String> street = new Vector<String>();
                 for (String item : parts) {
                     item = item.trim();
                     String onetwo[] = item.split(WKT_TAG_MARKSEP2);
@@ -572,47 +509,44 @@ public class OSMtoWKT extends DefaultHandler {
                     }
                     double x = Double.parseDouble(onetwo[0]);
                     double y = Double.parseDouble(onetwo[1]);
-                    // known landmark or new one?
+                    // known node or new one?
                     long currentmark = -1;
-                    for (Long i : landmarks.keySet()) {
-                        Landmark m = landmarks.get(i);
+                    for (String s : landmarks.keySet()) {
+                        Nodes n = landmarks.get(s);
 
                         //if(this.plainDistance(m.x, m.y, x, y) < 10){
-                        if (Math.abs(m.x - x) < epsilon && Math.abs(m.y - y) < epsilon) {
-                            currentmark = i;
+                        if (Math.abs(Double.parseDouble(n.getLon()) - x) < epsilon && Math.abs(Double.parseDouble(n.getLat()) - y) < epsilon) {
+                            currentmark = Long.parseLong(s);
                             break;
                         }
                     }
                     // need to generate new landmark
                     if (currentmark == -1) {
-                        Landmark lm = new Landmark();
-                        currentmark = markid++;
-                        lm.id = currentmark;
-                        lm.x = x;
-                        lm.y = y;
-                        landmarks.put(lm.id, lm);
-                        street.add(currentmark);
+                        Nodes nd = new Nodes();
+                        currentmark = nodeid++;
+                        nd.setId(Long.toString(currentmark));
+                        nd.setLon(Double.toString(x));
+                        nd.setLat(Double.toString(y));
+                        landmarks.put(nd.getId(), nd);
+                        street.add(Long.toString(currentmark));
                     } else
-                        street.add(currentmark);
+                        street.add(Long.toString(currentmark));
                 } //for(String item : parts)
-                streets.put(streetid++, street);
-
+                streets.put(String.valueOf(wayid++), street);
             }
-
         } catch (Exception e) {
             System.out.println("reading wkt file failed: " + e.getLocalizedMessage());
             e.printStackTrace();
             return false;
         }
-
         System.out.println("parsing wkt found " + streets.size() + " streets");
         return true;
     }
 
     private boolean fixCompleteness() {
         System.out.println("checking landmark completeness for all streets ...");
-        for (Vector<Long> l : streets.values()) {
-            for (Long mark : l) {
+        for (Vector<String> s : streets.values()) {
+            for (String mark : s) {
                 if (!landmarks.containsKey(mark)) {
                     System.out.println("landmarks " + mark + " for street not found");
                     return false;
@@ -636,72 +570,72 @@ public class OSMtoWKT extends DefaultHandler {
         do {
             changed = false;
             // walk all streets
-            for (Long streetA : streets.keySet()) {
-                Vector<Long> streetPointsA = streets.get(streetA);
+            for (String streetA : streets.keySet()) {
+                Vector<String> streetPointsA = streets.get(streetA);
                 int indexA = 0;
                 long lastAP = -1;
                 long currentAP = -1;
-                Landmark lastAL = null;
-                Landmark currentAL = null;
+                Nodes lastAL = null;
+                Nodes currentAL = null;
                 // iterate over every street part of the current street
-                for (Iterator<Long> iterpA = streetPointsA.iterator(); iterpA.hasNext(); indexA++) {
-                    Long pA = iterpA.next();
+                for (Iterator<String> iterpA = streetPointsA.iterator(); iterpA.hasNext(); indexA++) {
+                    String pA = iterpA.next();
                     if (lastAP == -1 || lastAL == null) {
-                        lastAP = pA;
+                        lastAP = Long.parseLong(pA);
                         lastAL = landmarks.get(pA);
                         continue;
                     }
                     // street part goes from lastP to currentP
-                    currentAP = pA;
+                    currentAP = Long.parseLong(pA);
                     currentAL = landmarks.get(pA);
                     // check to see if this street part crosses another street part
                     // this indicates a missing landmark at this position
                     // walk over possible crossing street
-                    for (Long streetB : streets.keySet()) {
-                        Vector<Long> streetPointsB = streets.get(streetB);
+                    for (String streetB : streets.keySet()) {
+                        Vector<String> streetPointsB = streets.get(streetB);
                         // don't check street with itself
-                        if ((long) streetA == (long) streetB)
+                        if (streetA.equals(streetB))
                             continue;
                         // unchecked street parts, go...
                         int indexB = 0;
                         long lastBP = -1;
                         long currentBP = -1;
-                        Landmark lastBL = null;
-                        Landmark currentBL = null;
+                        Nodes lastBL = null;
+                        Nodes currentBL = null;
 
                         // walk over the street part of possible crossing street
-                        for (Iterator<Long> iterpB = streetPointsB.iterator(); iterpB.hasNext(); indexB++) {
-                            Long pB = iterpB.next();
+                        for (Iterator<String> iterpB = streetPointsB.iterator(); iterpB.hasNext(); indexB++) {
+                            String pB = iterpB.next();
                             //System.out.println("running " + indexA + " against index " + indexB);
                             if (lastBP == -1 || lastBL == null) {
-                                lastBP = pB;
+                                lastBP = Long.parseLong(pB);
                                 lastBL = landmarks.get(pB);
                                 continue;
                             }
-                            currentBP = pB;
+                            currentBP = Long.parseLong(pB);
                             currentBL = landmarks.get(pB);
                             // street part from lastBP to currentBP
                             // check for crossings in the two street parts
                             // [lastAP,currentAP] and [lastBP,currentBP]
-                            Landmark crossing = checkCrossing(
+                            Nodes crossing = checkCrossing(
                                     lastAL, currentAL,
                                     lastBL, currentBL
                             );
                             if (crossing != null) {
                                 // add this id to a set
-                                if (!streetPointsA.contains(crossing.id)) {
-                                    streetPointsA.add(indexA, crossing.id);
+                                if (!streetPointsA.contains(crossing.getId())) {
+                                    streetPointsA.add(indexA, crossing.getId());
                                     //System.out.println("Adding landmark to street A");
                                     changed = true;
                                 }
-                                if (!streetPointsB.contains(crossing.id)) {
-                                    streetPointsB.add(indexB, crossing.id);
+                                if (!streetPointsB.contains(crossing.getId())) {
+                                    streetPointsB.add(indexB, crossing.getId());
                                     //System.out.println("Adding landmark to street B");
                                     changed = true;
                                 }
                                 if (changed) {
                                     missingLandmarks++;
-                                    fixCompletenessAddedLandmarks.add(crossing.id);
+                                    fixCompletenessAddedLandmarks.add(crossing.getId());
                                     break;
                                 }
                             } //if(crossing != null)
@@ -731,17 +665,17 @@ public class OSMtoWKT extends DefaultHandler {
         return true;
     }
 
-    private Landmark checkCrossing(Landmark a1, Landmark a2, Landmark b1, Landmark b2) {
+    private Nodes checkCrossing(Nodes a1, Nodes a2, Nodes b1, Nodes b2) {
         // see http://www.ucancode.net/faq/C-Line-Intersection-2D-drawing.htm
         // for 2d line crossing checks
         // line a --> aA*x+aB*y=aC
-        double aA = a2.y - a1.y;
-        double aB = a1.x - a2.x;
-        double aC = aA * a1.x + aB * a1.y;
+        double aA = Double.parseDouble(a2.getLat()) - Double.parseDouble(a1.getLat());
+        double aB = Double.parseDouble(a1.getLon()) - Double.parseDouble(a2.getLon());
+        double aC = aA * Double.parseDouble(a1.getLon())  + aB * Double.parseDouble(a1.getLat());
         // line b --> bA*x+bB*y=bC
-        double bA = b2.y - b1.y;
-        double bB = b1.x - b2.x;
-        double bC = bA * b1.x + bB * b1.y;
+        double bA = Double.parseDouble(b2.getLat()) - Double.parseDouble(b1.getLat());
+        double bB = Double.parseDouble(b1.getLon()) - Double.parseDouble(b2.getLon());
+        double bC = bA * Double.parseDouble(b1.getLon()) + bB * Double.parseDouble(b1.getLat());
         // crossing
         double det = aA * bB - bA * aB;
         if (det == 0) // lines are parallel
@@ -754,27 +688,31 @@ public class OSMtoWKT extends DefaultHandler {
         y = OSMtoWKT.round(y, OSMtoWKT.precisonFloating);
         //System.out.println("y = " + y);
         // check for x validity
-        boolean valid = (Math.min(a1.x, a2.x) <= x) && (x <= Math.max(a1.x, a2.x)) &&
-                (Math.min(a1.y, a2.y) <= y) && (y <= Math.max(a1.y, a2.y)) &&
-                (Math.min(b1.x, b2.x) <= x) && (x <= Math.max(b1.x, b2.x)) &&
-                (Math.min(b1.y, b2.y) <= y) && (y <= Math.max(b1.y, b2.y));
+        boolean valid = (Math.min( Double.parseDouble(a1.getLon()), Double.parseDouble(a2.getLon()) ) <= x) &&
+                (x <= Math.max( Double.parseDouble(a1.getLon()), Double.parseDouble(a2.getLon()) )) &&
+                (Math.min( Double.parseDouble(a2.getLat()), Double.parseDouble(a1.getLat()) ) <= y) &&
+                (y <= Math.max( Double.parseDouble(a2.getLat()), Double.parseDouble(a1.getLat()) )) &&
+                (Math.min( Double.parseDouble(b1.getLon()), Double.parseDouble(b2.getLon()) ) <= x) &&
+                (x <= Math.max( Double.parseDouble(b1.getLon()), Double.parseDouble(b2.getLon()) )) &&
+                (Math.min( Double.parseDouble(b2.getLat()), Double.parseDouble(b1.getLat()) ) <= y) &&
+                (y <= Math.max( Double.parseDouble(b2.getLat()), Double.parseDouble(b1.getLat()) ));
 
         // crossing but not within the line dimensions
         if (!valid) return null;
         // valid crossing -> can we use existing landmark?
-        Landmark crossing = null;
-        for (Landmark m : landmarks.values()) {
-            if (Math.abs(m.x - x) < epsilon && Math.abs(m.y - y) < epsilon) {
-                crossing = m;
+        Nodes crossing = null;
+        for (Nodes n : landmarks.values()) {
+            if (Math.abs(Double.parseDouble(n.getLon()) - x) < epsilon && Math.abs(Double.parseDouble(n.getLat()) - y) < epsilon) {
+                crossing = n;
                 break;
             }
         }
         if (crossing == null) {
-            crossing = new Landmark();
-            crossing.id = nextLandmarkIndex();
-            crossing.x = x;
-            crossing.y = y;
-            landmarks.put(crossing.id, crossing);
+            crossing = new Nodes();
+            crossing.setId(String.valueOf(nextNodeIndex()));
+            crossing.setLon(String.valueOf(x));
+            crossing.setLat(String.valueOf(y));
+            landmarks.put(crossing.getId(), crossing);
         }
         return crossing;
     }
@@ -792,28 +730,32 @@ public class OSMtoWKT extends DefaultHandler {
         lonMin = 180;
         lonMax = -180;
         // search for geographic bounds
-        for (Landmark l : landmarks.values()) {
-            if (l.latitude < latMin) latMin = l.latitude;
-            if (l.latitude > latMax) latMax = l.latitude;
-            if (l.longitude < lonMin) lonMin = l.longitude;
-            if (l.longitude > lonMax) lonMax = l.longitude;
+        for (Nodes l : landmarks.values()) {
+            if (Double.parseDouble(l.getLat()) < latMin)
+                latMin = Double.parseDouble(l.getLat());
+            if (Double.parseDouble(l.getLat()) > latMax)
+                latMax = Double.parseDouble(l.getLat());
+            if (Double.parseDouble(l.getLon()) < lonMin)
+                lonMin = Double.parseDouble(l.getLon());
+            if (Double.parseDouble(l.getLon()) > lonMax)
+                lonMax = Double.parseDouble(l.getLon());
         }
         System.out.println("found geographic bounds:"
                 + " latitude from " + latMin + " to " + latMax
                 + " longitude from " + lonMin + " to " + lonMax);
-        double width = geoDistance(latMin, lonMin, latMin, lonMax);
-        double height = geoDistance(latMin, lonMin, latMax, lonMin);
+        double width = Double.parseDouble(geoDistance(latMin, lonMin, latMin, lonMax));
+        double height = Double.parseDouble(geoDistance(latMin, lonMin, latMax, lonMin));
         System.out.println("geographic area dimensions are: height " + height + "m, width " + width + "m");
         // put coordinate system to upper left corner with (0,0), output in meters
-        for (Landmark l : landmarks.values()) {
-            l.x = geoDistance(l.latitude, l.longitude, l.latitude, lonMin);
-            l.y = geoDistance(l.latitude, l.longitude, latMin, l.longitude);
+        for (Nodes l : landmarks.values()) {
+            l.setLon(geoDistance(Double.parseDouble(l.getLat()), Double.parseDouble(l.getLon()), Double.parseDouble(l.getLat()), lonMin));
+            l.setLat(geoDistance(Double.parseDouble(l.getLat()), Double.parseDouble(l.getLon()), latMin, Double.parseDouble(l.getLon())));
         }
         return true;
     }
 
-    private double plainDistance(Landmark mark1, Landmark mark2) {
-        return plainDistance(mark1.x, mark1.y, mark2.x, mark2.y);
+    private double plainDistance(Nodes mark1, Nodes mark2) {
+        return plainDistance(Double.parseDouble(mark1.getLon()), Double.parseDouble(mark1.getLat()), Double.parseDouble(mark2.getLon()), Double.parseDouble(mark2.getLat()));
     }
 
     private double plainDistance(double x1, double y1, double x2, double y2) {
@@ -824,7 +766,7 @@ public class OSMtoWKT extends DefaultHandler {
         return distance;
     }
 
-    private double geoDistance(double lat1, double lon1, double lat2, double lon2) {
+    private String geoDistance(double lat1, double lon1, double lat2, double lon2) {
         // return distance between two gps fixes in meters
         double R = 6371;
         double dLat = Math.toRadians(lat2 - lat1);
@@ -834,15 +776,15 @@ public class OSMtoWKT extends DefaultHandler {
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         double distance = (R * c * 1000.0d);
         distance = OSMtoWKT.round(distance, OSMtoWKT.precisonFloating);
-        return distance;
+        return String.valueOf(distance);
     }
 
     private boolean translate(int x, int y) {
         if (x == 0 && y == 0) return true;
         System.out.println("translating map by x=" + x + " and y=" + y);
-        for (Landmark mark : landmarks.values()) {
-            mark.x += x;
-            mark.y += y;
+        for (Nodes mark : landmarks.values()) {
+            mark.setLon( String.valueOf( Long.parseLong(mark.getLon()) + x ) );
+            mark.setLat( String.valueOf( Long.parseLong(mark.getLat()) + x ) );
         }
         System.out.println("translation done");
         return true;
@@ -861,50 +803,50 @@ public class OSMtoWKT extends DefaultHandler {
     private boolean simplifyGraph(boolean repair) {
         System.out.println("simplyfing model, removing unconnected parts ...");
         // create a graph using JGraphT
-        Pseudograph<Long, DefaultEdge> graph = new Pseudograph<Long, DefaultEdge>(DefaultEdge.class);
+        Pseudograph<String, DefaultEdge> graph = new Pseudograph<String, DefaultEdge>(DefaultEdge.class);
         // add all landmarks as vertexes
-        for (Long l : landmarks.keySet()) {
-            Landmark lm = landmarks.get(l);
-            assert ((long) l == lm.id);
-            graph.addVertex(lm.id);
+        for (String l : landmarks.keySet()) {
+            Nodes nd = landmarks.get(l);
+            assert (l.equals(nd.getId()));
+            graph.addVertex(nd.getId());
         }
         // add all streets as edges between landmarks
-        for (Long s : streets.keySet()) {
-            Vector<Long> marks = streets.get(s);
-            Landmark last = null;
-            Landmark current = null;
-            for (Long m : marks) {
+        for (String s : streets.keySet()) {
+            Vector<String> marks = streets.get(s);
+            Nodes last = null;
+            Nodes current = null;
+            for (String m : marks) {
                 current = landmarks.get(m);
                 if (last == null) {
                     last = current;
                     continue;
                 }
-                assert (graph.containsVertex(last.id) && graph.containsVertex(current.id));
-                graph.addEdge(new Long(last.id), new Long(current.id));
+                assert (graph.containsVertex(last.getId()) && graph.containsVertex(current.getId()));
+                graph.addEdge(last.getId(), current.getId());
                 last = current;
             }
         } //for(Long s : streets.keySet())
         // check graph for connectivity, are there unconnected partitions?
-        ConnectivityInspector<Long, DefaultEdge> inspector =
-                new ConnectivityInspector<Long, DefaultEdge>(graph);
+        ConnectivityInspector<String, DefaultEdge>
+                inspector = new ConnectivityInspector<String, DefaultEdge>(graph);
         if (inspector.isGraphConnected()) {
             System.out.println("graph is connected, nothing to simplify");
             return true;
         }
         // we have partitions :(
         System.out.println("graph is not connected, analyzing partitions ...");
-        List<Set<Long>> partitions = inspector.connectedSets();
+        List<Set<String>> partitions = inspector.connectedSets();
         System.out.print("found " + partitions.size() + " partitions: ");
         // print the different partition sizes
         long count = 0;
-        for (Set<Long> partition : partitions) {
+        for (Set<String> partition : partitions) {
             System.out.print("[" + partition.size() + "] ");
             count += partition.size();
         }
         System.out.print("\n");
         // search for the largest partition, this one will be used
-        Set<Long> largestpartition = null;
-        for (Set<Long> partition : partitions) {
+        Set<String> largestpartition = null;
+        for (Set<String> partition : partitions) {
             if (largestpartition == null)
                 largestpartition = partition;
             else if (partition.size() > largestpartition.size())
@@ -921,8 +863,8 @@ public class OSMtoWKT extends DefaultHandler {
         }
         // have we encountered cases in which the graph came out to be unconnected
         // collect all vertices that are in the other than largest partitions
-        HashSet<Long> verticesRemove = new HashSet<Long>();
-        for (Set<Long> partition : partitions) {
+        HashSet<String> verticesRemove = new HashSet<String>();
+        for (Set<String> partition : partitions) {
             if (partition.size() == largestpartition.size()) continue;
             verticesRemove.addAll(partition);
         }
@@ -930,13 +872,13 @@ public class OSMtoWKT extends DefaultHandler {
         // remove vertices and edges from unused partitions
         int countRemovedLandmarks = 0;
         int countRemovedStreets = 0;
-        for (Long vertice : verticesRemove) {
+        for (String vertice : verticesRemove) {
             boolean removedL;
             do {
                 // remove all landmark
                 removedL = false;
-                for (Long lid : landmarks.keySet()) {
-                    if (((long) lid) == ((long) vertice)) {
+                for (String lid : landmarks.keySet()) {
+                    if (lid.equals(vertice)) {
                         landmarks.remove(lid);
                         removedL = true;
                         countRemovedLandmarks++;
@@ -948,8 +890,8 @@ public class OSMtoWKT extends DefaultHandler {
             do {
                 // remove all streets that contain this vertice
                 removedS = false;
-                for (Long sid : streets.keySet()) {
-                    Vector<Long> street = streets.get(sid);
+                for (String sid : streets.keySet()) {
+                    Vector<String> street = streets.get(sid);
                     if (street.contains(vertice)) {
                         streets.remove(sid);
                         removedS = true;
@@ -982,20 +924,23 @@ public class OSMtoWKT extends DefaultHandler {
                 wktstream.append("\n");
                 wktstream.append("\n");
             }
-            for (Vector<Long> s : streets.values()) {
+            for (Vector<String> s : streets.values()) {
+                System.out.print(s + "\t" + WKT_TAG_BEGIN);
                 wktstream.append(WKT_TAG_BEGIN);
                 for (int i = 0; i < s.size(); i++) {
-                    Long l = s.elementAt(i);
-                    Landmark mark = landmarks.get(l);
-                    wktstream.append(mark.x + WKT_TAG_MARKADD + mark.y);
-                    if (i + 1 < s.size()) wktstream.append(WKT_TAG_MARKSEP1 + WKT_TAG_MARKSEP2);
+                    String l = s.elementAt(i);
+                    Nodes mark = landmarks.get(l);
+                    System.out.print(mark.getLon() + WKT_TAG_MARKADD + mark.getLat());
+                    wktstream.append(mark.getLon() + WKT_TAG_MARKADD + mark.getLat());
+                    if (i + 1 < s.size()) {
+                        wktstream.append(WKT_TAG_MARKSEP1 + WKT_TAG_MARKSEP2);
+                        System.out.print(WKT_TAG_MARKSEP1 + WKT_TAG_MARKSEP2);
+                    }
                 }
-
                 wktstream.append(WKT_TAG_END + WKT_TAG_BREAK);
+                System.out.println(WKT_TAG_END + WKT_TAG_BREAK);
             }
-
             wktstream.close();
-
         } catch (IOException e) {
             System.out.println("writing wkt file failed: " + e.getLocalizedMessage());
             e.printStackTrace();
@@ -1008,27 +953,27 @@ public class OSMtoWKT extends DefaultHandler {
     private boolean PreparingWeightedGraph() {
         System.out.println("Preparing weighted graph called");
         // create a graph using JGraphT
-        weightedGraph = new WeightedPseudograph<Long, DefaultWeightedEdge>(DefaultWeightedEdge.class);
+        weightedGraph = new WeightedPseudograph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class);
         int numEdgesAdded = 0;
         // add all landmarks as verteces
-        for (Long l : landmarks.keySet()) {
-            Landmark lm = landmarks.get(l);
-            assert ((long) l == lm.id);
-            weightedGraph.addVertex(lm.id);
+        for (String l : landmarks.keySet()) {
+            Nodes lm = landmarks.get(l);
+            assert (l.equals(lm.getId()));
+            weightedGraph.addVertex(lm.getId());
         }
         // add all streets as edges between landmarks
-        for (Long s : streets.keySet()) {
-            Vector<Long> marks = streets.get(s);
-            Landmark last = null;
-            Landmark current = null;
-            for (Long m : marks) {
+        for (String s : streets.keySet()) {
+            Vector<String> marks = streets.get(s);
+            Nodes last = null;
+            Nodes current = null;
+            for (String m : marks) {
                 current = landmarks.get(m);
                 if (last == null) {
                     last = current;
                     continue;
                 }
-                assert (weightedGraph.containsVertex(last.id) &&
-                        weightedGraph.containsVertex(current.id));
+                assert (weightedGraph.containsVertex(last.getId()) &&
+                        weightedGraph.containsVertex(current.getId()));
                 // I hope adding edges more than once will not create any problem
                 // Yes it creates a lot of trouble ...
                 // 1) the pseudograph implementation screws up the weight parameter
@@ -1039,19 +984,19 @@ public class OSMtoWKT extends DefaultHandler {
                 //    of the edge between the two vertices is provided. So when
                 //    we say we have and edge between two points it the the same
                 //    edge how many ever times we say that and in what order we say that
-                String edge1 = (new Long(last.id)).toString() + " " + (new Long(current.id)).toString();
-                String edge2 = (new Long(current.id)).toString() + " " + (new Long(last.id)).toString();
+                String edge1 = last.getId() + " " + current.getId();
+                String edge2 = current.getId() + " " + last.getId();
                 double weight;
                 if (!edgesAlreadyAdded.contains(edge1) && !edgesAlreadyAdded.contains(edge2)) {
-                    weightedGraph.addEdge(new Long(last.id), new Long(current.id));
+                    weightedGraph.addEdge(last.getId(), current.getId());
                     numEdgesAdded += 1;
                     // following two vertices are already connected by an edge
-                    edge1 = (new Long(last.id)).toString() + " " + (new Long(current.id)).toString();
+                    edge1 = last.getId() + " " + current.getId();
                     edgesAlreadyAdded.add(edge1);
-                    edge2 = (new Long(current.id)).toString() + " " + (new Long(last.id)).toString();
+                    edge2 = current.getId() + " " + last.getId();
                     edgesAlreadyAdded.add(edge2);
 
-                    DefaultWeightedEdge weightedEdge = weightedGraph.getEdge(new Long(last.id), new Long(current.id));
+                    DefaultWeightedEdge weightedEdge = weightedGraph.getEdge(last.getId(), current.getId());
                     weight = plainDistance(last, current);
                     weightedGraph.setEdgeWeight(weightedEdge, weight);
                     last = current;
@@ -1077,7 +1022,7 @@ public class OSMtoWKT extends DefaultHandler {
         try {
             FileWriter dotStream = new FileWriter(file, false); // false as no appending is to be done
             // i have make weightedgraph available to this function
-            DOTExporter<Long, DefaultWeightedEdge> dotexport = new DOTExporter<Long, DefaultWeightedEdge>();
+            DOTExporter<String, DefaultWeightedEdge> dotexport = new DOTExporter<String, DefaultWeightedEdge>();
             // create a new writer with a new file name
             dotexport.export(dotStream, weightedGraph);
         } catch (java.io.IOException error) {
@@ -1099,7 +1044,7 @@ public class OSMtoWKT extends DefaultHandler {
         try {
             FileWriter naetoStream = new FileWriter(file, false); // false as no appending is to be done
             // i have make weightedgraph available to this function
-            NAETOExporter<Long, DefaultWeightedEdge> naetoexport = new NAETOExporter<Long, DefaultWeightedEdge>();
+            NAETOExporter<String, DefaultWeightedEdge> naetoexport = new NAETOExporter<String, DefaultWeightedEdge>();
             // create a new writer with a new file name
             naetoexport.export(naetoStream, weightedGraph);
         } catch (java.io.IOException error) {
@@ -1122,7 +1067,7 @@ public class OSMtoWKT extends DefaultHandler {
         try {
             FileWriter graphmlStream = new FileWriter(file, false); // false as no appending is to be done
             // i have make weightedgraph available to this function
-            GraphMLExporter<Long, DefaultWeightedEdge> graphmlexport = new GraphMLExporter<Long, DefaultWeightedEdge>();
+            GraphMLExporter<String, DefaultWeightedEdge> graphmlexport = new GraphMLExporter<String, DefaultWeightedEdge>();
             // create a new writer with a new file name
             graphmlexport.export(graphmlStream, weightedGraph);
         } catch (java.io.IOException error) {
@@ -1194,29 +1139,32 @@ public class OSMtoWKT extends DefaultHandler {
 			return;
 		}*/
 
-        OSMtoWKT xml = new OSMtoWKT();
+        OSMtoWKT obj = new OSMtoWKT();
         boolean append = false;
         int translateX = 0;
         int translateY = 0;
         //String file = "F:\\OSMwithWiki_Taiwan.osm";
         String file = "F:/taiwan-latest.osm";
         String destfile = "F:\\OSM2WKT_Test.txt";
-        xml.readOSM(file);
+        obj.readOSM(file);
+        //System.out.println("\ncountN: " + obj.countp + "\tcountW: " + obj.countw + "\t" + "Nodes: " + obj.landmarks.size() + "\tWays: " + obj.streets.size() + "\n");
+        System.out.println("\ncountN: " + obj.countp + "\tcountW: " + obj.countw + "\n");
 
         if (destfile.length() == 0) destfile = file + "." + FILE_EXT_WKT;
-        OSMtoWKT obj = new OSMtoWKT();
         String filelower = file.toLowerCase();
 
         System.out.println("converting file " + file + " ...");
         if (filelower.endsWith(FILE_EXT_OSM)) {
-            if (!obj.readOSM(file))
+            /*if (!obj.readOSM(file))
                 return;
+            System.out.println("\nNodes: " + xml.landmarks.size() + "\tWays: " + xml.streets.size() + "\n");*/
             if (!obj.transformCoordinates())
                 return;
             // this is where( simplifyGraph ) the graph is constructed
             // so you can create a weighted graph here and see if we get weird edges
             // that is edges with very small weights or edges with weight of 1
             // also calculate the number of nodes and edges in the graph at this point
+
             if (!obj.fixCompleteness())
                 return;
             if (!obj.simplifyModel(true))
@@ -1263,14 +1211,14 @@ public class OSMtoWKT extends DefaultHandler {
                 return;
             if (!obj.simplifyModel(true))
                 return;
-            /** exporting the graph
+            /* exporting the graph
              if(!obj.exportDOT(destfile)) 	return;
              if(!obj.exportNAETO(destfile)) 	return;
              if(!obj.exportGraphML(destfile)) 	return;
              if(!obj.exportGml(destfile)) 	return;
              if(!obj.exportMatrix(destfile)) 	return;
              done exporting now writing files
-             **/
+             */
             if (!obj.writeWkt(destfile, append))
                 return;
         } else {
@@ -1282,153 +1230,4 @@ public class OSMtoWKT extends DefaultHandler {
     }
 }
 
-class Nodes{
-    //对应于XML中的node，数据库中的Point
-    private String id;
-    private String version;
-    private String uid;
-    private String user;
-    private String lon;
-    private String lat;
-    private String changeset;
-    private String timestamp;
-    private String visible;
-    private String tag;
-
-    public String getTag() {
-        return tag;
-    }
-    public void setTag(String tag) {
-        this.tag = tag;
-    }
-    public String getId() {
-        return id;
-    }
-    public void setId(String id) {
-        this.id = id;
-    }
-    public String getVersion() {
-        return version;
-    }
-    public void setVersion(String version) {
-        this.version = version;
-    }
-    public String getUid() {
-        return uid;
-    }
-    public void setUid(String uid) {
-        this.uid = uid;
-    }
-    public String getUser() {
-        return user;
-    }
-    public void setUser(String user) {
-        this.user = user;
-    }
-    public String getLon() {
-        return lon;
-    }
-    public void setLon(String lon) {
-        this.lon = lon;
-    }
-    public String getLat() {
-        return lat;
-    }
-    public void setLat(String lat) {
-        this.lat = lat;
-    }
-    public String getChangeset() {
-        return changeset;
-    }
-    public void setChangeset(String changeset) {
-        this.changeset = changeset;
-    }
-    public String getTimestamp() {
-        return timestamp;
-    }
-    public void setTimestamp(String timestamp) {
-        this.timestamp = timestamp;
-    }
-    public String getVisible() {
-        return visible;
-    }
-    public void setVisible(String visible) {
-        this.visible = visible;
-    }
-}
-class Way{
-    //对应于XML中的way、数据库中的Polylin和Polygon
-    private String id;
-    private String version;
-    private String uid;
-    private String user;
-    private String changeset;
-    private String timestamp;
-    private String tag;
-    private String point;
-    private String pointids;
-    private String visible;
-
-    public String getVisible() {
-        return visible;
-    }
-    public void setVisible(String visible) {
-        this.visible = visible;
-    }
-    public String getPointids() {
-        return pointids;
-    }
-    public void setPointids(String pointids) {
-        this.pointids = pointids;
-    }
-    public String getPoint() {
-        return point;
-    }
-    public void setPoint(String point) {
-        this.point = point;
-    }
-    public String getTag() {
-        return tag;
-    }
-    public void setTag(String tag) {
-        this.tag = tag;
-    }
-    public String getId() {
-        return id;
-    }
-    public void setId(String id) {
-        this.id = id;
-    }
-    public String getVersion() {
-        return version;
-    }
-    public void setVersion(String version) {
-        this.version = version;
-    }
-    public String getUid() {
-        return uid;
-    }
-    public void setUid(String uid) {
-        this.uid = uid;
-    }
-    public String getUser() {
-        return user;
-    }
-    public void setUser(String user) {
-        this.user = user;
-    }
-    public String getChangeset() {
-        return changeset;
-    }
-    public void setChangeset(String changeset) {
-        this.changeset = changeset;
-    }
-    public String getTimestamp() {
-        return timestamp;
-    }
-    public void setTimestamp(String timestamp) {
-        this.timestamp = timestamp;
-    }
-
-}
 

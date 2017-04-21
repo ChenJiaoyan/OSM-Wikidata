@@ -96,6 +96,10 @@ public class HelloGeoKG {
         System.out.printf("This project is to study (1) the linkage between OSM and WikiData, " +
                 "(2) the linkage between OSM and POIs \n");
         System.out.println("Have Fun!");
+        String str = "康壽養生素食館&#10;(康壽國小側門)&#10;電話：";
+        System.out.println(str);
+        str = HandleFiles.unicodeToString(str);
+        System.out.println(str);
         String OSMFile_China = "F:\\OSMwithWiki_China.csv";
         String OSMFile_Taiwan = "F:\\OSMwithWiki_Taiwan.csv";
         //String WikiFile_China = "F:\\WikiwithOSM_China.csv";
@@ -109,8 +113,8 @@ public class HelloGeoKG {
         String unionPath_Taiwan = "F:\\OSM-Wikidata_Union_Taiwan.csv";
         //join(OSMFile_Taiwan, WikiFile, triplePath_Taiwan,joinPath_Taiwan);
         //join(OSMFile_China, WikiFile, triplePath_China,joinPath_China);
-        union (OSMFile_Taiwan, WikiFile, joinPath_Taiwan, unionPath_Taiwan);
-        union (OSMFile_China, WikiFile, joinPath_China, unionPath_China);
+        //union (OSMFile_Taiwan, WikiFile, joinPath_Taiwan, unionPath_Taiwan);
+        //union (OSMFile_China, WikiFile, joinPath_China, unionPath_China);
         //String str = "member type=\"node\" ref=";
         //System.out.println(str.length());
     }

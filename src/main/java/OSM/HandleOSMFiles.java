@@ -27,6 +27,7 @@ public class HandleOSMFiles {
                     return newstr.substring(0,i);
                 }
             }
+            reader.close();
         } catch (FileNotFoundException e1) {
             e1.printStackTrace();
         } catch (IOException e1) {

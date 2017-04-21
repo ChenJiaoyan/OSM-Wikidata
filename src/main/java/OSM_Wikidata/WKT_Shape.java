@@ -6,5 +6,9 @@ package OSM_Wikidata;
 public enum WKT_Shape {
     POINT,
     LINESTRING,
-    POLYGON;
+    POLYGON,
+    MULTIPOINT,
+    MULTILINESTRING,
+    MULTIPOLYGON,
+    GEOMETRYCOLLECTION;
 }
