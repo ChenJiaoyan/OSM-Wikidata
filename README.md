@@ -17,7 +17,7 @@
 运行/src/main/java/OSM_Wikidata下的OSM.java文件，得到OSM数据的RDF格式：
 "F:\\RDF_OSM_Taiwan.ttl";
 "F:\\RDF_OSM_China.ttl";
-运行/src/main/java/OSM_Wikidata下的Wikidata.java文件，得到OSM数据的RDF格式：
+运行/src/main/java/OSM_Wikidata下的Wikidata.java文件，得到Wikidata数据的RDF格式：
 "F:\\RDF_Wiki_Taiwan.ttl";
 "F:\\RDF_Wiki_China.ttl";
 
