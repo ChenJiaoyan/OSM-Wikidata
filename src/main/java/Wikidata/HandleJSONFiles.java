@@ -51,7 +51,7 @@ public class HandleJSONFiles {
 
 
                 /**
-                 * 中间文件生成, 生成WikiName_en&&ID.csv
+                 * 中间文件生成, 生成Wiki-Name_EN&&ID.csv
                  * 记录下wikidata中的ID及其对应的英文名，以便最后生成rdf，因为OSM中有些实体只有中文名
                  * /
                 /*
@@ -63,7 +63,7 @@ public class HandleJSONFiles {
                     String buf2 = HandleFiles.record(len, newstr); //buf2记录下这个属于某一country的entity的name
                     String newbuf = HandleFiles.unicodeToString(buf2);
                     System.out.println("ID " + buf + "\tName " + newbuf);
-                    HandleFiles.WriteFile("F:\\WikiName_en&&ID.csv", buf + "," + newbuf + "\r\n");
+                    HandleFiles.WriteFile("F:\\Wiki-Name_EN&&ID.csv", buf + "," + newbuf + "\r\n");
                 }*/
 
                 if(newstr.indexOf("\"id\":\"Q936\"", i) > j) { //如果这个entity有OSM的references
