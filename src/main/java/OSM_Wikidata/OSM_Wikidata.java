@@ -1,20 +1,22 @@
 package OSM_Wikidata;
 
+import java.io.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * Created by SmallApple on 2017/4/17.
  */
 public class OSM_Wikidata {
-    final String Context = "http://crowdgeokg.org/context.jsonld";
-    ArrayList<String> Type = null;
-    String ID = null;
-    String IDType = null;
-    String Name_zh = null;
-    String Name_en = null;
-    String WKT = null;
-    String URL = null;
-    ArrayList<String> SameAs = null;
+    static final String Context = "http://crowdgeokg.org/context.jsonld";
+    static ArrayList<String> Type = null;
+    static String ID = null;
+    static String IDType = null;
+    static String Name_zh = null;
+    static String Name_en = null;
+    static String WKT = null;
+    static String URL = null;
+    static HashMap<String, ArrayList<String>> SameAs = null;
 
     public void setID(String ID) {
         this.ID = ID;
@@ -44,57 +46,78 @@ public class OSM_Wikidata {
         this.WKT = WKT;
     }
 
-    public String getContext() {
+    public void setSameAs(HashMap<String, ArrayList<String>> SameAs) {
+        this.SameAs = SameAs;
+    }
+
+    public static String getContext() {
         return Context;
     }
 
-    public String getID() {
+    public static String getID() {
         return ID;
     }
 
-    public String getIDType() {
+    public static String getIDType() {
         return IDType;
     }
 
-    public ArrayList<String> getType() {
+    public static ArrayList<String> getType() {
         return Type;
     }
 
-    public String getName_zh() {
+    public static String getName_zh() {
         return Name_zh;
     }
 
-    public String getName_en() {
+    public static String getName_en() {
         return Name_en;
     }
 
-    public String getURL() {
+    public static String getURL() {
         return URL;
     }
 
-    public String getWKT() {
+    public static String getWKT() {
         return WKT;
     }
 
-    public ArrayList<String> getSameAs() {
+    public static HashMap<String, ArrayList<String>> getSameAs() {
         return SameAs;
     }
 
-    public ArrayList RDF_Generate () {
+    //首字母转小写
+    public static String toLowerCaseFirstOne(String s){
+        if(Character.isLowerCase(s.charAt(0)))
+            return s;
+        else
+            return (new StringBuilder()).append(Character.toLowerCase(s.charAt(0))).append(s.substring(1)).toString();
+    }
+    //首字母转大写
+    public static String toUpperCaseFirstOne(String s){
+        if(Character.isUpperCase(s.charAt(0)))
+            return s;
+        else
+            return (new StringBuilder()).append(Character.toUpperCase(s.charAt(0))).append(s.substring(1)).toString();
+    }
+
+    public static ArrayList RDF_Generate() {
         ArrayList rdf = new ArrayList<String>();
         String context = "\"@context\": \"" + getContext() + "\"";
         String id = "\"@id\": \"/" + getIDType() + "/" + getID() + "\"";
-        String type = "\"@type\":" + getType();
+        String type = "\"@type\": " + getType();
         String name = "\"name\": [\n" +
-                    "\t{\"@value\":\""+ getName_en() + "\", \"@language\":\"en\"},\n" +
-                    "\t{\"@value\":\""+ getName_zh() + "\", \"@language\":\"zh\"},\n" +
-                    "]";
+                "\r\n\r\t\r\t{\"@value\": \""+ getName_en() + "\", \"@language\": \"en\"},\r\n" +
+                "\r\t\r\t{\"@value\": \""+ getName_zh() + "\", \"@language\": \"zh\"},\r\n" +
+                "\r\t]";
         String wkt = "\"asWKT\": \"" + getWKT() + "\"";
-        String url = getURL();
-        String same = "\"sameAs\":{\n" +
-                    "\t\"" + getSameAs().get(0) +  "\",\n" +
-                    "\t\"" + getSameAs().get(1) +  "\",\n" +
-                    "}";
+        String url = "\"url\": " + getURL();
+        String s1 = getSameAs().keySet().toString();
+        String s2 = new String(s1.substring(1, s1.length()-1));
+        String same = "\"sameAs\": {\n" +
+                "\r\n\r\t\r\t\"@id\": \"" + s2 +  "\",\r\n" +
+                "\r\t\r\t\"@type\": " + getSameAs().get(s2) +  ",\r\n" +
+                "\r\t}";
         rdf.add(context);
         rdf.add(id);
         rdf.add(type);

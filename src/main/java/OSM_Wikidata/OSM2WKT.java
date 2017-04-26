@@ -5,26 +5,15 @@ package OSM_Wikidata;
  */
 
 import FileHandle.HandleFiles;
-import exports.DOTExporter;
-import exports.GraphMLExporter;
-import exports.NAETOExporter;
-import org.jgrapht.alg.ConnectivityInspector;
-import org.jgrapht.graph.DefaultEdge;
-import org.jgrapht.graph.DefaultWeightedEdge;
-import org.jgrapht.graph.Pseudograph;
-import org.jgrapht.graph.WeightedPseudograph;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
-import javax.management.relation.Relation;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
-import javax.xml.transform.TransformerConfigurationException;
 import java.io.*;
 import java.math.BigDecimal;
-import java.sql.Timestamp;
 import java.util.*;
 
 public class OSM2WKT extends DefaultHandler {
@@ -40,8 +29,23 @@ public class OSM2WKT extends DefaultHandler {
     private final static String XML_TAG_NAME = "name"; //需要记录下value的tag key
     private final static String FILE_EXT_WKT = "wkt";
     private final static String FILE_EXT_OSM = "osm";
-    private final static String WKT_TAG_BEGIN = "LINESTRING (";
-    private final static String WKT_TAG_IBEGIN = "LINESTRING";
+    /**
+     * 几何WKT字串
+     */
+    private final static String WKT_TAG_BEGIN_POINT = "POINT (";
+    private final static String WKT_TAG_IBEGIN_POINT = "POINT";
+    private final static String WKT_TAG_BEGIN_LINE = "LINESTRING (";
+    private final static String WKT_TAG_IBEGIN_LINE = "LINESTRING";
+    private final static String WKT_TAG_BEGIN_POL = "POLYGON (";
+    private final static String WKT_TAG_IBEGIN_POL = "POLYGON";
+    private final static String WKT_TAG_BEGIN_MULPOI = "MULTIPOINT (";
+    private final static String WKT_TAG_IBEGIN_MULPOI = "MULTIPOINT";
+    private final static String WKT_TAG_BEGIN_MULLINE = "MULTILINESTRING (";
+    private final static String WKT_TAG_IBEGIN_MULLINE = "MULTILINESTRING";
+    private final static String WKT_TAG_BEGIN_MULGON = "MULTIPOLYGON (";
+    private final static String WKT_TAG_IBEGIN_MULGON = "MULTIPOLYGON";
+    private final static String WKT_TAG_BEGIN_GEOCOL = "GEOMETRYCOLLECTION (";
+    private final static String WKT_TAG_IBEGIN_GEOCOL = "GEOMETRYCOLLECTION";
     private final static String WKT_TAG_BRACK1 = "(";
     private final static String WKT_TAG_BRACK2 = ")";
     private final static String WKT_TAG_END = ")";
@@ -50,13 +54,8 @@ public class OSM2WKT extends DefaultHandler {
     private final static String WKT_TAG_MARKSEP1 = ",";
     private final static String WKT_TAG_MARKSEP2 = " ";
 
-    private WeightedPseudograph<String, DefaultWeightedEdge> weightedGraph;
-    private WeightedPseudograph<String, DefaultWeightedEdge> testweightedGraph;
-    private HashSet<String> fixCompletenessAddedLandmarks = new HashSet<String>();
-    private HashSet<String> edgesAlreadyAdded = new HashSet<String>();
     static int precisonFloating = 3; // use 3 decimals after comma for rounding
     double epsilon = 0.0001;
-    String Snum = new String();
 
     private String curretntag = "";
     private String idcontents = "";
@@ -90,9 +89,9 @@ public class OSM2WKT extends DefaultHandler {
      * 用HashMap进行存储内存会溢出，这是OSMtoWKT使用的方法
      * 需要另寻他法——先存到文件中保存起来，再进行匹配
      */
-    private String NodePath = "F:\\NodePath.txt";
-    private String WayPath = "F:\\WayPath.txt";
-    private String RelationPath = "F:\\RelationPath.txt";
+    private static String NodePath = "F:\\NodePath.txt";
+    private static String WayPath = "F:\\WayPath.txt";
+    private static String RelationPath = "F:\\RelationPath.txt";
 
     boolean Type = false, temTympe = false;
     private Integer countp = 0;
@@ -398,12 +397,41 @@ public class OSM2WKT extends DefaultHandler {
         return true;
     }
 
-    private static Nodes getNode(String nodeLine) {
+    private static String[] getSplit(String str) {
+        String[] s = new String[5];
+        int i = 0;
+        int j;
+        int n = 0;
+        while((j = str.indexOf(SplitStr, i)) >= 0) {
+            String ss = new String(str.substring(i,j));
+            s[n] = ss;
+            //System.out.println(s[n]);
+            i = j + SplitStr.length();
+            n++;
+        }
+        if(i <= str.length()-1) {
+            String ss = new String(str.substring(i, str.length()));
+            s[n] = ss;
+        }
+        return s;
+
+    }
+
+    public static Nodes getNode(String nodeLine) {
         if(nodeLine == null) {
             return null;
         }
         Nodes node = new Nodes();
-        String[] nodeInf = nodeLine.split(SplitStr);
+        //String[] nodeInf = nodeLine.split(SplitStr);
+        String[] nodeInf = getSplit(nodeLine);
+        /**解释一下？
+         * 这里使用split函数会导致内存溢出，因为在使用getNode()函数时，需要多次扫描node数据文件
+         * 而split函数最终调用的是String类的substring方法，
+         * substring出的来String小对象，仍然会指向原String大对象的char[]，
+         * 为了避免内存拷贝，提高性能，substring并没有重新创建char数组，而是直接复用了原String对象的char[]，通过改变偏移。
+         * 因此存在同样的问题。split出来的小对象，直接使用原String对象的char[]
+         * 所以就导致了OutOfMemoryError问题
+         */
         if(!isNumeric(nodeInf[0]) || nodeInf.length < 4) {
             return null;
         }
@@ -414,34 +442,7 @@ public class OSM2WKT extends DefaultHandler {
         nodeInf = null;
         return node;
     }
-    private static Way getWay(String wayline) {
-        if(wayline == null) {
-            return null;
-        }
-        Way way = new Way();
-        String[] wayInf = wayline.split(SplitStr);
-        if(!isNumeric(wayInf[0])) {
-            return null;
-        }
-        Vector<String> noderef = new Vector<String>();
-        if(wayInf[2].length() > 2) {
-            String nodeset = wayInf[2].substring(1, wayInf[2].length()-2);
-            String[] nodes = nodeset.split(",");
-            if(nodes.length <= 1) {
-                noderef.add(nodeset.trim());
-            } else {
-                for (int i = 0; i < nodes.length; i++) {
-                    noderef.add(nodes[i].trim());
-                }
-            }
-        }
-        way.setId(wayInf[0]);
-        way.setPointids(noderef);
-        way.setTag(wayInf[1]);
-        //System.out.println(way.getId() + "," + way.getTag() + "," + way.getPointids());
-        return way;
-    }
-    private static Nodes getNodebyID (String nodeid, String nodePath) {
+    public static Nodes getNodebyID (String nodeid, String nodePath) {
         File file = new File(nodePath);
         BufferedReader reader = null;
         Nodes node = new Nodes();
@@ -453,7 +454,6 @@ public class OSM2WKT extends DefaultHandler {
                 if(nodeInf.length < 4) continue;
                 String id = nodeInf[0];
                 if(nodeid.equals(id)) {
-                    System.out.println("Made");
                     node.setId(id);
                     node.setLon(nodeInf[1]);
                     node.setLat(nodeInf[2]);
@@ -471,11 +471,223 @@ public class OSM2WKT extends DefaultHandler {
         } catch (IOException e1) {
             e1.printStackTrace();
         }
-        System.out.println(node.getId() + "," + node.getTag() + "," + node.getLon() + " " + node.getLat());
+        //System.out.println(node.getId() + "," + node.getTag() + "," + node.getLon() + " " + node.getLat());
         return node;
     }
 
-    private boolean polygonOrPolyline(Vector<String> nodes) {
+
+    public static Way getWay(String wayline) {
+        if(wayline == null) {
+            return null;
+        }
+        Way way = new Way();
+        //String[] wayInf = wayline.split(SplitStr);
+        String[] wayInf = getSplit(wayline);
+        if(!isNumeric(wayInf[0])) {
+            return null;
+        }
+        Vector<String> noderef = new Vector<String>();
+        if(wayInf[2].length() > 2) {
+            String nodeset = wayInf[2].substring(1, wayInf[2].length() - 1);
+            if(nodeset.indexOf(",") < 0) {
+                noderef.add(nodeset.trim());
+            }
+            String[] nodes = nodeset.split(",");
+            if(nodes.length > 1) {
+                for (int i = 0; i < nodes.length; i++) {
+                    noderef.add(nodes[i].trim());
+                }
+            }
+        } else {
+            noderef = null;
+        }
+        way.setId(wayInf[0]);
+        way.setPointids(noderef);
+        way.setTag(wayInf[1]);
+        return way;
+    }
+    public static Way getWaybyID (String wayid, String wayPath) {
+        File file = new File(wayPath);
+        BufferedReader reader = null;
+        Way way = new Way();
+        try {
+            reader = new BufferedReader(new FileReader(wayPath), 10 * 1024 * 1024);
+            String stringLine = null;
+            while ((stringLine = reader.readLine()) != null) {
+                String[] wayInf = stringLine.split(SplitStr);
+                if(wayInf.length < 3) continue;
+                String id = wayInf[0];
+                if(wayid.equals(id)) {
+                    Vector<String> noderef = new Vector<>();
+                    if(wayInf[2].length() > 2) {
+                        String nodeset = wayInf[2].substring(1, wayInf[2].length()-1);
+                        if(nodeset.indexOf(",") < 0) {
+                            noderef.add(nodeset.trim());
+                        }
+                        String[] nodes = nodeset.split(",");
+                        if(nodes.length > 1) {
+                            for (int i = 0; i < nodes.length; i++) {
+                                noderef.add(nodes[i].trim());
+                            }
+                        }
+                    } else {
+                        noderef = null;
+                    }
+                    way.setId(id);
+                    way.setTag(wayInf[1]);
+                    way.setPointids(noderef);
+                    break;
+                }
+            }
+            reader.close();
+        } catch (FileNotFoundException e1) {
+            e1.printStackTrace();
+        } catch (IOException e1) {
+            e1.printStackTrace();
+        }
+        return way;
+    }
+
+    public static Relations getRelation(String relationline) {
+        if(relationline == null) {
+            return null;
+        }
+        Relations relation = new Relations();
+        //String[] relationInf = relationline.split(SplitStr);
+        String[] relationInf = getSplit(relationline);
+        if(!isNumeric(relationInf[0])) {
+            return null;
+        }
+        Vector<String> noderef = new Vector<String>();
+        Vector<String> wayref = new Vector<String>();
+        Vector<String> relationref = new Vector<String>();
+        if(relationInf[2].length() > 2) {
+            String nodeset = relationInf[2].substring(1, relationInf[2].length()-1);
+            if(nodeset.indexOf(",") < 0) {
+                noderef.add(nodeset.trim());
+            }
+            String[] nodes = nodeset.split(",");
+            if(nodes.length > 1) {
+                for (int i = 0; i < nodes.length; i++) {
+                    noderef.add(nodes[i].trim());
+                }
+            }
+        } else {
+            noderef = null;
+        }
+        if(relationInf[3].length() > 2) {
+            String wayset = relationInf[3].substring(1, relationInf[3].length()-1);
+            if(wayset.indexOf(",") < 0) {
+                wayref.add(wayset.trim());
+            }
+            String[] ways = wayset.split(",");
+            if(ways.length > 1) {
+                for (int i = 0; i < ways.length; i++) {
+                    wayref.add(ways[i].trim());
+                }
+            }
+        } else {
+            wayref = null;
+        }
+        if(relationInf[4].length() > 2) {
+            String relationset = relationInf[4].substring(1, relationInf[4].length()-1);
+            if(relationset.indexOf(",") < 0) {
+                relationref.add(relationset.trim());
+            }
+            String[] relations = relationset.split(",");
+            if(relations.length > 1) {
+                for (int i = 0; i < relations.length; i++) {
+                    relationref.add(relations[i].trim());
+                }
+            }
+        } else {
+            relationref = null;
+        }
+        relation.setId(relationInf[0]);
+        relation.setTag(relationInf[1]);
+        relation.setnodeIDs(noderef);
+        relation.setwayIDs(wayref);
+        relation.setrelationIDs(relationref);
+        return relation;
+    }
+    public static Relations getRelationByID(String relationID, String relationPath) {
+        if(relationID == null || !isNumeric(relationID)) {
+            return null;
+        }
+        Relations relation = new Relations();
+        Vector<String> noderef = new Vector<String>();
+        Vector<String> wayref = new Vector<String>();
+        Vector<String> relationref = new Vector<String>();
+        File file = new File(relationPath);
+        BufferedReader reader = null;
+        try {
+            reader = new BufferedReader(new FileReader(relationPath), 10 * 1024 * 1024);
+            String stringLine = null;
+            while ((stringLine = reader.readLine()) != null) {
+                String[] relationInf = stringLine.split(SplitStr);
+                if(relationInf.length < 5) continue;
+                String id = relationInf[0];
+                if(relationID.equals(id)) {
+                    if(relationInf[2].length() > 2) {
+                        String nodeset = relationInf[2].substring(1, relationInf[2].length()-1);
+                        if(nodeset.indexOf(",") < 0) {
+                            noderef.add(nodeset.trim());
+                        }
+                        String[] nodes = nodeset.split(",");
+                        if(nodes.length > 1) {
+                            for (int i = 0; i < nodes.length; i++) {
+                                noderef.add(nodes[i].trim());
+                            }
+                        }
+                    } else {
+                        noderef = null;
+                    }
+                    if(relationInf[3].length() > 2) {
+                        String wayset = relationInf[3].substring(1, relationInf[3].length()-1);
+                        if(wayset.indexOf(",") < 0) {
+                            wayref.add(wayset.trim());
+                        }
+                        String[] ways = wayset.split(",");
+                        if(ways.length > 1) {
+                            for (int i = 0; i < ways.length; i++) {
+                                wayref.add(ways[i].trim());
+                            }
+                        }
+                    } else {
+                        wayref = null;
+                    }
+                    if(relationInf[4].length() > 2) {
+                        String relationset = relationInf[4].substring(1, relationInf[4].length()-1);
+                        if(relationset.indexOf(",") < 0) {
+                            relationref.add(relationset.trim());
+                        }
+                        String[] relations = relationset.split(",");
+                        if(relations.length > 1) {
+                            for (int i = 0; i < relations.length; i++) {
+                                relationref.add(relations[i].trim());
+                            }
+                        }
+                    } else {
+                        relationref = null;
+                    }
+                    relation.setId(id);
+                    relation.setTag(relationInf[1]);
+                    relation.setnodeIDs(noderef);
+                    relation.setwayIDs(wayref);
+                    relation.setrelationIDs(relationref);
+                    break;
+                }
+            }
+            reader.close();
+        } catch (FileNotFoundException e1) {
+            e1.printStackTrace();
+        } catch (IOException e1) {
+            e1.printStackTrace();
+        }
+        return relation;
+    }
+
+    private static boolean polygonOrPolyline(Vector<String> nodes) {
         //用于区分线和面数据
         //If return true, the poly is a polygon.
         if (nodes == null)
@@ -489,41 +701,6 @@ public class OSM2WKT extends DefaultHandler {
             return false;
     }
 
-    /*private Long nextNodeIndex() {
-        Long i = new Long(landmarks.size());
-        for (; true; i++) {
-            if (landmarks.containsKey(String.valueOf(i)) == false && i > 0) {
-                //System.out.println("i=" + i);
-                return i;
-            }
-        }
-    }*/
-    private Long nextNodeIndex() {
-        Long i = new Long(countp);
-        for (; true; i++) {
-            File nodefile = new File(NodePath);
-            BufferedReader nodereader = null;
-            try {
-                nodereader = new BufferedReader(new FileReader(nodefile), 10 * 1024 * 1024);
-                String s = null;
-                while ((s = nodereader.readLine()) != null) {
-                    Nodes n = new Nodes();
-                    n = getNode(s);
-                    if(n == null) {
-                        continue;
-                    }
-                    String id = n.getId();
-                    if(!id.equals(String.valueOf(i)) && i > 0) {
-                        return i;
-                    }
-                }
-                nodereader.close();
-            } catch (FileNotFoundException e) {
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
 
     public static double round(double d, int decimalPlace) {
         BigDecimal bd = new BigDecimal(Double.toString(d));
@@ -531,7 +708,7 @@ public class OSM2WKT extends DefaultHandler {
         return bd.doubleValue();
     }
 
-    private boolean readOSM(String filePath) {
+    public boolean readOSM(String filePath) {
         System.out.println("reading in openstreetmap xml ...");
         try {
             // check if file exists
@@ -680,94 +857,6 @@ public class OSM2WKT extends DefaultHandler {
         return true;
     }
 
-    private boolean fixCompleteness() {
-        System.out.println("checking landmark completeness for all streets ...");
-
-        /**
-         * 这里的工程量有点大，但是正常来说不会出现有节点找不到的情况，所以忽略
-         */
-        /*for (Vector<String> s : streets.values()) {
-            for (String mark : s) {
-                if (!landmarks.containsKey(mark)) {
-                    System.out.println("landmarks " + mark + " for street not found");
-                    return false;
-                }
-            }
-        }*/
-        System.out.println("all required landmarks available for all streets");
-        return true;
-    }
-
-    private Nodes checkCrossing(Nodes a1, Nodes a2, Nodes b1, Nodes b2) {
-        // see http://www.ucancode.net/faq/C-Line-Intersection-2D-drawing.htm
-        // for 2d line crossing checks
-        // line a --> aA*x+aB*y=aC
-        double aA = Double.parseDouble(a2.getLat()) - Double.parseDouble(a1.getLat());
-        double aB = Double.parseDouble(a1.getLon()) - Double.parseDouble(a2.getLon());
-        double aC = aA * Double.parseDouble(a1.getLon())  + aB * Double.parseDouble(a1.getLat());
-        // line b --> bA*x+bB*y=bC
-        double bA = Double.parseDouble(b2.getLat()) - Double.parseDouble(b1.getLat());
-        double bB = Double.parseDouble(b1.getLon()) - Double.parseDouble(b2.getLon());
-        double bC = bA * Double.parseDouble(b1.getLon()) + bB * Double.parseDouble(b1.getLat());
-        // crossing
-        double det = aA * bB - bA * aB;
-        if (det == 0) // lines are parallel
-            return null;
-        // set precision
-        double x = (bB * aC - aB * bC) / det;
-        x = OSM2WKT.round(x, OSM2WKT.precisonFloating);
-        //System.out.println("x = " + x);
-        double y = (aA * bC - bA * aC) / det;
-        y = OSM2WKT.round(y, OSM2WKT.precisonFloating);
-        //System.out.println("y = " + y);
-        // check for x validity
-        boolean valid = (Math.min( Double.parseDouble(a1.getLon()), Double.parseDouble(a2.getLon()) ) <= x) &&
-                (x <= Math.max( Double.parseDouble(a1.getLon()), Double.parseDouble(a2.getLon()) )) &&
-                (Math.min( Double.parseDouble(a2.getLat()), Double.parseDouble(a1.getLat()) ) <= y) &&
-                (y <= Math.max( Double.parseDouble(a2.getLat()), Double.parseDouble(a1.getLat()) )) &&
-                (Math.min( Double.parseDouble(b1.getLon()), Double.parseDouble(b2.getLon()) ) <= x) &&
-                (x <= Math.max( Double.parseDouble(b1.getLon()), Double.parseDouble(b2.getLon()) )) &&
-                (Math.min( Double.parseDouble(b2.getLat()), Double.parseDouble(b1.getLat()) ) <= y) &&
-                (y <= Math.max( Double.parseDouble(b2.getLat()), Double.parseDouble(b1.getLat()) ));
-
-        // crossing but not within the line dimensions
-        if (!valid) return null;
-        // valid crossing -> can we use existing landmark?
-        Nodes crossing = null;
-        File nodefile = new File(NodePath);
-        BufferedReader nodereader = null;
-        try {
-            nodereader = new BufferedReader(new FileReader(nodefile), 10 * 1024 * 1024);
-            String s = null;
-            while ((s = nodereader.readLine()) != null) {
-                Nodes n = new Nodes();
-                n = getNode(s);
-                if(n == null) {
-                    continue;
-                }
-                if (Math.abs(Double.parseDouble(n.getLon()) - x) < epsilon && Math.abs(Double.parseDouble(n.getLat()) - y) < epsilon) {
-                    crossing = n;
-                    break;
-                }
-            }
-            nodereader.close();
-        } catch (FileNotFoundException e) {
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        if (crossing == null) {
-            crossing = new Nodes();
-            crossing.setId(String.valueOf(nextNodeIndex()));
-            crossing.setLon(String.valueOf(x));
-            crossing.setLat(String.valueOf(y));
-            crossing.setTag("New Generated Node");
-            HandleFiles.WriteFile(NodePath, crossing.getId() + SplitStr + crossing.getLon() + SplitStr + crossing.getLat() + SplitStr + crossing.getTag() + "\r\n");
-            countp++;
-        }
-        return crossing;
-    }
-
     private boolean transformCoordinates() {
         // in this function we have to restrict the precision we calculate the x, y coordinates of the point to avoid floating point errors
         System.out.println("transforming geographic landmarks ...");
@@ -886,183 +975,186 @@ public class OSM2WKT extends DefaultHandler {
         return true;
     }
 
-    private boolean simplifyModel(boolean repair) {
-        for (int i = 1; i <= 10; i++) {
-            System.out.println("simplicatiation run " + i + " of max 10");
-            boolean connected = simplifyGraph(repair);
-            if(connected)
-                break;
-        }
-        return true;
+    public static String node2WKT(Nodes node) {
+        return WKT_TAG_BEGIN_POINT + node.getLon() + WKT_TAG_MARKADD + node.getLat() + WKT_TAG_END;
     }
 
-    private boolean simplifyGraph(boolean repair) {
-        System.out.println("simplyfing model, removing unconnected parts ...");
-        // create a graph using JGraphT
-        Pseudograph<String, DefaultEdge> graph = new Pseudograph<String, DefaultEdge>(DefaultEdge.class);
-        // add all nodes as vertexes
-        File nodefile = new File(NodePath);
-        BufferedReader nodereader = null;
-        try {
-            nodereader = new BufferedReader(new FileReader(nodefile), 10 * 1024 * 1024);
-            String s = null;
-            while ((s = nodereader.readLine()) != null) {
-                Nodes nd = new Nodes();
-                nd = getNode(s);
-                s = null;
-                if(nd == null) {
-                    continue;
-                }
-                String l = nd.getId();
-                assert (l.equals(nd.getId()));
-                graph.addVertex(nd.getId());
-            }
-            nodereader.close();
-        } catch (FileNotFoundException e) {
-        } catch (IOException e) {
-            e.printStackTrace();
+    public static String way2WKT(Way way) {
+        String str = "";
+        Vector<String> s = way.getPointids();
+        if(polygonOrPolyline(s)) {
+            str += WKT_TAG_BEGIN_POL;
+        } else {
+            str += WKT_TAG_BEGIN_LINE;
         }
-        // add all ways as edges between nodes
-        File wayfile = new File(WayPath);
-        BufferedReader wayreader = null;
-        try {
-            wayreader = new BufferedReader(new FileReader(wayfile), 10 * 1024 * 1024);
-            String ss = null;
-            while ((ss = wayreader.readLine()) != null) {
-                Way w = new Way();
-                w = getWay(ss);
-                if(w == null) {
-                    continue;
+        for (int i = 0; i < s.size(); i++) {
+            String l = s.elementAt(i);
+            Nodes mark = getNodebyID(l, NodePath);
+            str += mark.getLon() + WKT_TAG_MARKADD + mark.getLat();
+            if (i + 1 < s.size()) {
+                str += WKT_TAG_MARKSEP1 + WKT_TAG_MARKSEP2;
+            }
+        }
+        str += WKT_TAG_END + WKT_TAG_BREAK;
+        return str;
+    }
+
+    public static String relation2WKT(Relations relation) {
+        String str = "";
+        if(relation.getrelationIDs() != null) {
+            for(int i = 0; i < relation.getrelationIDs().size(); i++) {
+                String sr = relation.getrelationIDs().elementAt(i);
+                Relations re = getRelationByID(sr, RelationPath);
+                Vector<String> noder = relation.getnodeIDs();
+                Vector<String> wayr = relation.getwayIDs();
+                for(int j = 0; j < re.getnodeIDs().size(); j++) {
+                    noder.add(re.getnodeIDs().elementAt(j));
                 }
-                Vector<String> marks = w.getPointids();
-                String s = w.getId();
-                Nodes last = new Nodes();
-                Nodes current = new Nodes();
-                for(int i=0; i<marks.size(); i++) {
-                    String m = marks.elementAt(i);
-                    System.out.println(m);
-                    current = getNodebyID(m, NodePath);
-                    if (last == null) {
-                        last = current;
-                        continue;
+                relation.setnodeIDs(noder);
+                for(int k = 0; k < re.getwayIDs().size(); k++) {
+                    wayr.add(re.getwayIDs().elementAt(k));
+                }
+                relation.setwayIDs(wayr);
+            }
+        }
+        //System.out.println(relation.getId() + relation.getTag() + relation.getnodeIDs() + "," + relation.getwayIDs());
+        //System.out.println(relation.getnodeIDs() == null);
+        // 如果经过处理的relation只有node的reference
+        if(relation.getnodeIDs() != null  && relation.getwayIDs() == null) {
+            if(relation.getnodeIDs().size() == 1) {
+                Nodes node = getNodebyID(relation.getnodeIDs().elementAt(0), NodePath);
+                str += WKT_TAG_BEGIN_POINT + node.getLon() + WKT_TAG_MARKADD + node.getLat() + WKT_TAG_END;
+            } else {
+                str += WKT_TAG_BEGIN_MULPOI;
+                for(int i = 0; i < relation.getnodeIDs().size(); i++) {
+                    Nodes node = getNodebyID(relation.getnodeIDs().elementAt(i), NodePath);
+                    str += node.getLon() + WKT_TAG_MARKADD + node.getLat();
+                    if (i + 1 < relation.getnodeIDs().size()) {
+                        str += WKT_TAG_MARKSEP1 + WKT_TAG_MARKSEP2;
                     }
-                    assert (graph.containsVertex(last.getId()) && graph.containsVertex(current.getId()));
-                    System.out.println(last.getId() + "," + current.getId() + "," + marks.size() + "," + m);
-                    graph.addEdge(last.getId(), current.getId());
-                    last = current;
+                }
+                str += WKT_TAG_END;
+            }
+        }
+        // 如果经过处理的relation只有way的reference
+        if(relation.getnodeIDs() == null && relation.getwayIDs() != null) {
+            int p = 0; //判断way的集合中是否有POINT的WKT格式
+            int l = 0; //判断way的集合中是否有LINESTRING的WKT格式
+            int g = 0; //判断way的集合中是否有POLYGON的WKT格式
+            if(relation.getwayIDs().size() == 1) {
+                Way way = getWaybyID(relation.getwayIDs().elementAt(0), WayPath);
+                str += way2WKT(way);
+            } else if(relation.getwayIDs().size() > 1) {
+                Way way = new Way();
+                String[] wayset = new String[relation.getwayIDs().size() + 1];
+                for(int i=0; i<relation.getwayIDs().size(); i++) {
+                    way = getWaybyID(relation.getwayIDs().elementAt(i), WayPath);
+                    wayset[i] = way2WKT(way);
+                    if(wayset[i].indexOf(WKT_TAG_BEGIN_POINT) == 0) p = 1;
+                    if(wayset[i].indexOf(WKT_TAG_BEGIN_LINE) == 0) l = 1;
+                    if(wayset[i].indexOf(WKT_TAG_BEGIN_POL) == 0) g = 1;
+                }
+                if( p + l + g > 1) {
+                    str += WKT_TAG_BEGIN_GEOCOL;
+                    for(int i=0; i<relation.getwayIDs().size(); i++) {
+                        str += wayset[i];
+                        if(i+1 < relation.getwayIDs().size()) {
+                            str += WKT_TAG_MARKSEP1 + WKT_TAG_MARKSEP2;
+                        }
+                    }
+                    str += WKT_TAG_END;
+                } else {
+                    String strtype = "";
+                    if(p == 1) strtype = WKT_TAG_BEGIN_MULPOI;
+                    if(l == 1) strtype = WKT_TAG_BEGIN_MULLINE;
+                    if(g == 1) strtype = WKT_TAG_BEGIN_MULGON;
+                    str += strtype;
+                    for(int i=0; i<relation.getwayIDs().size(); i++) {
+                        str += wayset[i].substring(wayset[i].indexOf("("));
+                        if(i+1 < relation.getwayIDs().size()) {
+                            str += WKT_TAG_MARKSEP1 + WKT_TAG_MARKSEP2;
+                        }
+                    }
+                    str += WKT_TAG_END;
                 }
             }
-            wayreader.close();
-        } catch (FileNotFoundException e1) {
-            e1.printStackTrace();
-        } catch (IOException e1) {
-            e1.printStackTrace();
         }
-        // check graph for connectivity, are there unconnected partitions?
-        ConnectivityInspector<String, DefaultEdge>
-                inspector = new ConnectivityInspector<String, DefaultEdge>(graph);
-        if (inspector.isGraphConnected()) {
-            System.out.println("graph is connected, nothing to simplify");
-            return true;
+        // 如果经过处理的relation不仅有node，也有way的reference
+        if(relation.getnodeIDs() != null && relation.getwayIDs() != null) {
+            str += WKT_TAG_BEGIN_GEOCOL;
+            if(relation.getnodeIDs().size() == 1) {
+                Nodes node = getNodebyID(relation.getnodeIDs().elementAt(0), NodePath);
+                str += WKT_TAG_BEGIN_POINT + node.getLon() + WKT_TAG_MARKADD + node.getLat();
+                str += WKT_TAG_MARKSEP1 + WKT_TAG_MARKSEP2;
+            } else if (relation.getnodeIDs().size() > 1) {
+                str += WKT_TAG_BEGIN_MULPOI;
+                for(int i = 0; i < relation.getnodeIDs().size(); i++) {
+                    Nodes node = getNodebyID(relation.getnodeIDs().elementAt(i), NodePath);
+                    str += node.getLon() + WKT_TAG_MARKADD + node.getLat();
+                    str += WKT_TAG_MARKSEP1 + WKT_TAG_MARKSEP2;
+                }
+            }
+            if(relation.getwayIDs().size() == 1) {
+                Way way = getWaybyID(relation.getwayIDs().elementAt(0), WayPath);
+                str += way2WKT(way);
+            } else if(relation.getwayIDs().size() > 1) {
+                Way way = new Way();
+                String[] wayset = new String[relation.getwayIDs().size() + 1];
+                for (int i = 0; i < relation.getwayIDs().size(); i++) {
+                    way = getWaybyID(relation.getwayIDs().elementAt(i), WayPath);
+                    str += way2WKT(way);
+                    if(i+1 < relation.getwayIDs().size()) {
+                        str += WKT_TAG_MARKSEP1 + WKT_TAG_MARKSEP2;
+                    }
+                }
+            }
+            str += WKT_TAG_END;
         }
-        // we have partitions :(
-        System.out.println("graph is not connected, analyzing partitions ...");
-        List<Set<String>> partitions = inspector.connectedSets();
-        System.out.print("found " + partitions.size() + " partitions: ");
-        // print the different partition sizes
-        long count = 0;
-        for (Set<String> partition : partitions) {
-            System.out.print("[" + partition.size() + "] ");
-            count += partition.size();
-        }
-        System.out.print("\n");
-        // search for the largest partition, this one will be used
-        Set<String> largestpartition = null;
-        for (Set<String> partition : partitions) {
-            if (largestpartition == null)
-                largestpartition = partition;
-            else if (partition.size() > largestpartition.size())
-                largestpartition = partition;
-        }
-        if(largestpartition != null) {
-            System.out.println("selecting largest partition of landmark size " + largestpartition.size()
-                    + ". removing unselected partitions of estimated " + Math.abs(count - largestpartition.size())
-                    + " landmarks");
-        }
-        if (!repair) {
-            System.out.println("not reparing");
-            return true;
-        }
-        // have we encountered cases in which the graph came out to be unconnected
-        // collect all vertices that are in the other than largest partitions
-        HashSet<String> verticesRemove = new HashSet<String>();
-        for (Set<String> partition : partitions) {
-            if (partition.size() == largestpartition.size()) continue;
-            verticesRemove.addAll(partition);
-        }
-        System.out.println("analyzed " + verticesRemove.size() + " landmarks to remove");
-        // remove vertices and edges from unused partitions
-        int countRemovedLandmarks = 0;
-        int countRemovedStreets = 0;
-        for (String vertice : verticesRemove) {
-            boolean removedL;
-            do {
-                // remove all landmark
-                removedL = false;
-                File nodefile1 = new File(NodePath);
-                BufferedReader nodereader1 = null;
+        return str;
+    }
+
+    public boolean writeWkt(String wktfile, String feature) {
+        System.out.println("writing wkt file ...");
+        try {
+            File wkt = new File(wktfile);
+            if (wkt.exists()) wkt.delete();
+            wkt.createNewFile();
+            if(feature.equals("node")) {
+                File nodefile = new File(NodePath);
+                BufferedReader nodereader = null;
                 try {
-                    nodereader1 = new BufferedReader(new FileReader(nodefile1), 10 * 1024 * 1024);
-                    String s = null;
-                    while ((s = nodereader1.readLine()) != null) {
+                    nodereader = new BufferedReader(new FileReader(nodefile), 10 * 1024 * 1024);
+                    String ss = null;
+                    while((ss = nodereader.readLine()) != null) {
                         Nodes n = new Nodes();
-                        n = getNode(s);
+                        n = getNode(ss);
                         if(n == null) {
                             continue;
                         }
-                        String lid = n.getId();
-                        if (lid.equals(vertice)) {
-                            //landmarks.remove(lid);
-                            /**
-                             * 要删除这个ID为lid的节点
-                             */
-                            removedL = true;
-                            countRemovedLandmarks++;
-                            break;
-                        }
+                        System.out.println(n.getId() + "," + n.getTag() + "," + node2WKT(n));
+                        HandleFiles.WriteFile(wktfile, n.getId() + SplitStr + n.getTag() + SplitStr + node2WKT(n) + "\r\n");
                     }
                     nodereader.close();
-                } catch (FileNotFoundException e) {
-                } catch (IOException e) {
-                    e.printStackTrace();
+                } catch (FileNotFoundException e1) {
+                    e1.printStackTrace();
+                } catch (IOException e1) {
+                    e1.printStackTrace();
                 }
-            } while (removedL);
-            boolean removedS;
-            do {
-                // remove all streets that contain this vertice
-                removedS = false;
-                File wayfile1 = new File(WayPath);
-                BufferedReader wayreader1 = null;
+            }
+            if(feature.equals("way")) {
+                File wayfile = new File(WayPath);
+                BufferedReader wayreader = null;
                 try {
-                    wayreader1 = new BufferedReader(new FileReader(wayfile1), 10 * 1024 * 1024);
-                    String s = null;
-                    while ((s = wayreader1.readLine()) != null) {
+                    wayreader = new BufferedReader(new FileReader(wayfile), 10 * 1024 * 1024);
+                    String ss = null;
+                    while ((ss = wayreader.readLine()) != null) {
                         Way w = new Way();
-                        w = getWay(s);
+                        w = getWay(ss);
                         if(w == null) {
                             continue;
                         }
-                        String sid = w.getId();
-                        Vector<String> street = w.getPointids();
-                        if (street.contains(vertice)) {
-                            //streets.remove(sid);
-                            /**
-                             * 要删除这个ID为sid的路径
-                             */
-                            removedS = true;
-                            countRemovedStreets++;
-                            break;
-                        }
+                        System.out.println(w.getId() + w.getTag() + w.getPointids() + "\n" + way2WKT(w));
+                        HandleFiles.WriteFile(wktfile, w.getId() + SplitStr + w.getTag() + SplitStr + way2WKT(w) + "\r\n");
                     }
                     wayreader.close();
                 } catch (FileNotFoundException e1) {
@@ -1070,63 +1162,29 @@ public class OSM2WKT extends DefaultHandler {
                 } catch (IOException e1) {
                     e1.printStackTrace();
                 }
-            } while (removedS);
-
-        } //for(Long vertice : verticesRemove)
-        System.out.println("removed " + countRemovedStreets
-                + " unconnected streets and " + countRemovedLandmarks
-                + " unconnected landmarks. know have "
-                + countw + " streets in map built upon "
-                + countp + " landmarks");
-        return false;
-    }
-
-    private boolean writeWkt(String wktfile, boolean append) {
-        System.out.println("writing wkt file ...");
-        try {
-            File wkt = new File(wktfile);
-            if (!append) {
-                if (wkt.exists()) wkt.delete();
-                wkt.createNewFile();
             }
-            FileWriter wktstream = new FileWriter(wkt, append);
-            if (append) {
-                wktstream.append("\n");
-                wktstream.append("\n");
-                wktstream.append("\n");
-            }
-            File wayfile = new File(WayPath);
-            BufferedReader wayreader = null;
-            try {
-                wayreader = new BufferedReader(new FileReader(wayfile), 10 * 1024 * 1024);
-                String ss = null;
-                while ((ss = wayreader.readLine()) != null) {
-                    Way w = new Way();
-                    w = getWay(ss);
-                    if(w == null) {
-                        continue;
-                    }
-                    Vector<String> s = w.getPointids();
-                    System.out.print(s + "\t" + WKT_TAG_BEGIN);
-                    wktstream.append(WKT_TAG_BEGIN);
-                    for (int i = 0; i < s.size(); i++) {
-                        String l = s.elementAt(i);
-                        Nodes mark = getNodebyID(l, NodePath);
-                        System.out.print(mark.getLon() + WKT_TAG_MARKADD + mark.getLat());
-                        wktstream.append(mark.getLon() + WKT_TAG_MARKADD + mark.getLat());
-                        if (i + 1 < s.size()) {
-                            wktstream.append(WKT_TAG_MARKSEP1 + WKT_TAG_MARKSEP2);
-                            System.out.print(WKT_TAG_MARKSEP1 + WKT_TAG_MARKSEP2);
+
+            if(feature.equals("relation")) {
+                File relationfile = new File(RelationPath);
+                BufferedReader relationreader = null;
+                try {
+                    relationreader = new BufferedReader(new FileReader(relationfile), 10 * 1024 * 1024);
+                    String ss = null;
+                    while((ss = relationreader.readLine()) != null) {
+                        Relations r = new Relations();
+                        r = getRelation(ss);
+                        if(r == null) {
+                            continue;
                         }
+                        System.out.println(r.getId() + "," + r.getTag() + "\n" + relation2WKT(r));
+                        HandleFiles.WriteFile(wktfile, r.getId() + SplitStr + r.getTag() + SplitStr + relation2WKT(r) + "\r\n");
                     }
-                    wktstream.append(WKT_TAG_END + WKT_TAG_BREAK);
-                    System.out.println(WKT_TAG_END + WKT_TAG_BREAK);
+                    relationreader.close();
+                } catch (FileNotFoundException e1) {
+                    e1.printStackTrace();
+                } catch (IOException e1) {
+                    e1.printStackTrace();
                 }
-                wayreader.close();
-            } catch (FileNotFoundException e1) {
-                e1.printStackTrace();
-            } catch (IOException e1) {
-                e1.printStackTrace();
             }
         } catch (IOException e) {
             System.out.println("writing wkt file failed: " + e.getLocalizedMessage());
@@ -1134,211 +1192,6 @@ public class OSM2WKT extends DefaultHandler {
             return false;
         }
         System.out.println("writing wkt file done");
-        return true;
-    }
-
-    private boolean PreparingWeightedGraph() {
-        System.out.println("Preparing weighted graph called");
-        // create a graph using JGraphT
-        weightedGraph = new WeightedPseudograph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class);
-        int numEdgesAdded = 0;
-        // add all landmarks as verteces
-        File nodefile = new File(NodePath);
-        BufferedReader nodereader = null;
-        try {
-            nodereader = new BufferedReader(new FileReader(nodefile), 10 * 1024 * 1024);
-            String s = null;
-            while ((s = nodereader.readLine()) != null) {
-                Nodes lm = new Nodes();
-                lm = getNode(s);
-                if(lm == null) {
-                    continue;
-                }
-                String l = lm.getId();
-                assert (l.equals(lm.getId()));
-                weightedGraph.addVertex(lm.getId());
-            }
-            nodereader.close();
-        } catch (FileNotFoundException e) {
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        // add all streets as edges between landmarks
-        File wayfile = new File(WayPath);
-        BufferedReader wayreader = null;
-        try {
-            wayreader = new BufferedReader(new FileReader(wayfile), 10 * 1024 * 1024);
-            String ss = null;
-            while ((ss = wayreader.readLine()) != null) {
-                Way w = new Way();
-                w = getWay(ss);
-                if(w == null) {
-                    continue;
-                }
-                String s = w.getId();
-                Vector<String> marks = w.getPointids();
-                Nodes last = null;
-                Nodes current = null;
-                for (int i = 0; i < marks.size(); i++) {
-                    String m = marks.elementAt(i);
-                    current = getNodebyID(m, NodePath);
-                    if (last == null) {
-                        last = current;
-                        continue;
-                    }
-                    assert (weightedGraph.containsVertex(last.getId()) &&
-                            weightedGraph.containsVertex(current.getId()));
-                    // I hope adding edges more than once will not create any problem
-                    // Yes it creates a lot of trouble ...
-                    // 1) the pseudograph implementation screws up the weight parameter
-                    // 2) this is the not the graph we that we have obtained from osm data
-                    //    osm data only gives you one edge between two points
-                    //    For osm we have the specification of two joints which
-                    //    form the end points of the edges and no specification
-                    //    of the edge between the two vertices is provided. So when
-                    //    we say we have and edge between two points it the the same
-                    //    edge how many ever times we say that and in what order we say that
-                    String edge1 = last.getId() + " " + current.getId();
-                    String edge2 = current.getId() + " " + last.getId();
-                    double weight;
-                    if (!edgesAlreadyAdded.contains(edge1) && !edgesAlreadyAdded.contains(edge2)) {
-                        weightedGraph.addEdge(last.getId(), current.getId());
-                        numEdgesAdded += 1;
-                        // following two vertices are already connected by an edge
-                        edge1 = last.getId() + " " + current.getId();
-                        edgesAlreadyAdded.add(edge1);
-                        edge2 = current.getId() + " " + last.getId();
-                        edgesAlreadyAdded.add(edge2);
-
-                        DefaultWeightedEdge weightedEdge = weightedGraph.getEdge(last.getId(), current.getId());
-                        weight = plainDistance(last, current);
-                        weightedGraph.setEdgeWeight(weightedEdge, weight);
-                        last = current;
-                    } else {
-                        System.out.println("the edge has already been added to the graph");
-                    }
-                    last = current;
-                }
-            }
-            wayreader.close();
-        } catch (FileNotFoundException e1) {
-            e1.printStackTrace();
-        } catch (IOException e1) {
-            e1.printStackTrace();
-        }
-        return true;  // everything was completed successfully
-    }
-
-
-    //// dot format
-    private boolean exportDOT(String destfile) {
-        destfile = destfile + "." + "SNA_DOT.dat";
-        // first open a File
-        // the associate a FileWriter to it
-        // keep appending data to Filewrtier stream
-        // then close the FileWriter
-        // I do not know why but probably you do not need to close the file
-        File file = new File(destfile);
-        try {
-            FileWriter dotStream = new FileWriter(file, false); // false as no appending is to be done
-            // i have make weightedgraph available to this function
-            DOTExporter<String, DefaultWeightedEdge> dotexport = new DOTExporter<String, DefaultWeightedEdge>();
-            // create a new writer with a new file name
-            dotexport.export(dotStream, weightedGraph);
-        } catch (java.io.IOException error) {
-            // whatever
-        }
-        System.out.println("graph exported in dot format to " + destfile);
-        return true;
-    }
-
-    //// naeto format
-    private boolean exportNAETO(String destfile) {
-        destfile = destfile + "." + "SNA_NAETO.dat";
-        // first open a File
-        // the associate a FileWriter to it
-        // keep appending data to Filewrtier stream
-        // then close the FileWriter
-        // I do not know why but probably you do not need to close the file
-        File file = new File(destfile);
-        try {
-            FileWriter naetoStream = new FileWriter(file, false); // false as no appending is to be done
-            // i have make weightedgraph available to this function
-            NAETOExporter<String, DefaultWeightedEdge> naetoexport = new NAETOExporter<String, DefaultWeightedEdge>();
-            // create a new writer with a new file name
-            naetoexport.export(naetoStream, weightedGraph);
-        } catch (java.io.IOException error) {
-            // whatever
-        }
-        System.out.println("graph exported in naeto format to " + destfile);
-        return true;
-    }
-
-
-    //GraphML
-    private boolean exportGraphML(String destfile) {
-        destfile = destfile + "." + "SNA_GraphML.dat";
-        // first open a File
-        // the associate a FileWriter to it
-        // keep appending data to Filewrtier stream
-        // then close the FileWriter
-        // I do not know why but probably you do not need to close the file
-        File file = new File(destfile);
-        try {
-            FileWriter graphmlStream = new FileWriter(file, false); // false as no appending is to be done
-            // i have make weightedgraph available to this function
-            GraphMLExporter<String, DefaultWeightedEdge> graphmlexport = new GraphMLExporter<String, DefaultWeightedEdge>();
-            // create a new writer with a new file name
-            graphmlexport.export(graphmlStream, weightedGraph);
-        } catch (java.io.IOException error) {
-            // whatever
-        } catch (TransformerConfigurationException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        } catch (SAXException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        System.out.println("graph exported in GraphML format to " + destfile);
-        return true;
-    }
-
-
-    // this function is to remove edges with very small weights
-    // they are a result of edges being added more than once or
-    // edges adding due to floating point comparision error
-    // while fixCompleteness
-    private boolean removeBogusEdges() {
-        System.out.println(" ");
-        // ConcurrentModificationException occurs because i have a iterator iterating through
-        // the edgeSet and i'm modifing it at the same time
-        // this is unacceptable
-        // So make a list of these edge while iterating and then remove them from the graph
-        ArrayList<DefaultWeightedEdge> removeEdge = new ArrayList<DefaultWeightedEdge>();
-        for (DefaultWeightedEdge e : weightedGraph.edgeSet()) {
-            double weight = weightedGraph.getEdgeWeight(e);
-            if (Math.abs(weight - 1.0) < 0.0001 || weight <= 1.0E-09) {
-                System.out.println("Edge with small weight : " + weight);
-                removeEdge.add(e);
-            }
-            //remove edges in the List
-        }
-        int size = weightedGraph.edgeSet().size();
-        System.out.println("size of the graph before removing edges : " + size);
-        size = removeEdge.size();
-        System.out.println("total number of unnecessary edges : " + size);
-        for (DefaultWeightedEdge edge : removeEdge) {
-            // checking whether edge has been successfully removed
-            weightedGraph.removeEdge(edge);
-            if (!weightedGraph.containsEdge(edge))
-                System.out.println("edge successfully removed");
-            else
-                System.out.println("failure in removing the edge ");
-        }
-        size = weightedGraph.edgeSet().size();
-        System.out.println("size of the graph after removing edges : " + size);
-        // after the removal the graph may have some partitions so try and get the biggest partitions of these
         return true;
     }
 
@@ -1353,6 +1206,28 @@ public class OSM2WKT extends DefaultHandler {
         );
     }
 
+    public static String getEnName(String WikiID, String filePath) {
+        String NameEn = "No English Name";
+        File file = new File(filePath);
+        BufferedReader reader = null;
+        try {
+            reader = new BufferedReader(new FileReader(file), 10 * 1024 * 1024);
+            String s = null;
+            while ((s = reader.readLine()) != null) {
+                String id = new String(s.substring(0, s.indexOf(",")));
+                if(id.equals(WikiID)) {
+                    NameEn = s.substring(s.indexOf(",") + 1);
+                }
+            }
+            reader.close();
+        } catch (FileNotFoundException e1) {
+            e1.printStackTrace();
+        } catch (IOException e1) {
+            e1.printStackTrace();
+        }
+        return NameEn;
+    }
+
     public static void main(String[] args) {
 		/*System.out.println("osm2wkt v1.2.0- convert " + "openstreetmap to wkt - Christoph P. Mayer - mayer@kit.edu");
 		if(args.length < 1 || args.length > 7){
@@ -1361,91 +1236,51 @@ public class OSM2WKT extends DefaultHandler {
 		}*/
 
         OSM2WKT obj = new OSM2WKT();
-        boolean append = false;
+        String node = "node";
+        String way = "way";
+        String relation = "relation";
         int translateX = 0;
         int translateY = 0;
-        //String file = "F:\\OSMwithWiki_Taiwan.osm";
         String file = "F:/taiwan-latest.osm";
-        String destfile = "F:\\OSM2WKT_Test.txt";
-        //obj.readOSM(file);
-        //System.out.println("\ncountN: " + obj.countp + "\tcountW: " + obj.countw + "\n");
+        String destfile1 = "F:\\OSM2WKT_Node.txt";
+        String destfile2 = "F:\\OSM2WKT_Way.txt";
+        String destfile3 = "F:\\OSM2WKT_Relation.txt";
+        String Wiki_NameEn = "F:\\Wiki-Name_EN&&ID.csv";
 
-        if (destfile.length() == 0) destfile = file + "." + FILE_EXT_WKT;
+        if (destfile1.length() == 0) destfile1 = file + "." + FILE_EXT_WKT;
+        if (destfile2.length() == 0) destfile2 = file + "." + FILE_EXT_WKT;
+        if (destfile3.length() == 0) destfile3 = file + "." + FILE_EXT_WKT;
         String filelower = file.toLowerCase();
 
         System.out.println("converting file " + file + " ...");
         if (filelower.endsWith(FILE_EXT_OSM)) {
             /*if (!obj.readOSM(file))
+                return;*/
+            //obj.readOSM(file);
+            /*if (!obj.transformCoordinates())
+                return;*/
+            /*
+            if (!obj.writeWkt(destfile1, node))
                 return;
-            System.out.println("\nNodes: " + xml.landmarks.size() + "\tWays: " + xml.streets.size() + "\n");*/
-            if (!obj.transformCoordinates())
+                */
+            if (!obj.writeWkt(destfile2, way))
                 return;
-            // this is where( simplifyGraph ) the graph is constructed
-            // so you can create a weighted graph here and see if we get weird edges
-            // that is edges with very small weights or edges with weight of 1
-            // also calculate the number of nodes and edges in the graph at this point
-
-            if (!obj.fixCompleteness())
-                return;
-            if (!obj.simplifyModel(true))
-                return;
-            if (!obj.translate(translateX, translateY))
-                return;
-            /** just after this function gets completed i think the graph
-             is complete and we can make a pseudo graph out of it and
-             export to a a format which is acceptable by a SNA software
-             also one can input this graph to SNA libraries existing in java itself
-             **/
-            if (!obj.PreparingWeightedGraph())
-                return;
-            if (!obj.removeBogusEdges())
-                return;
-            if (!obj.simplifyModel(true))
-                return;
-            //if(!obj.exportDOT(destfile)) 	return;
-            //if(!obj.exportNAETO(destfile)) 	return;
-            //if(!obj.exportGml(destfile)) 	return;
-            //if(!obj.exportGraphML(destfile)) 	return;
-            //if(!obj.exportMatrix(destfile)) 	return;
-            if (!obj.writeWkt(destfile, append))
+            if (!obj.writeWkt(destfile3, relation))
                 return;
         } else if (filelower.endsWith(FILE_EXT_WKT)) {
             if (!obj.readWkt(file))
                 return;
-            /** try and prepare a weighted graph right now
-             and see if there are any bogus edges
-             then clear the graph removeAllEdges removeAllVertices
-             and later whenver you want reconstruct the graph
-             **/
-            if (!obj.fixCompleteness())
+            if (!obj.writeWkt(destfile1, node))
                 return;
-            if (!obj.simplifyModel(true))
+            if (!obj.writeWkt(destfile2, way))
                 return;
-            if (!obj.translate(translateX, translateY))
-                return;
-            if (!obj.PreparingWeightedGraph())
-                return;
-            if (!obj.removeBogusEdges())
-                return;
-            if (!obj.fixCompleteness())
-                return;
-            if (!obj.simplifyModel(true))
-                return;
-            /* exporting the graph
-             if(!obj.exportDOT(destfile)) 	return;
-             if(!obj.exportNAETO(destfile)) 	return;
-             if(!obj.exportGraphML(destfile)) 	return;
-             if(!obj.exportGml(destfile)) 	return;
-             if(!obj.exportMatrix(destfile)) 	return;
-             done exporting now writing files
-             */
-            if (!obj.writeWkt(destfile, append))
+            if (!obj.writeWkt(destfile3, relation))
                 return;
         } else {
             System.out.println("unknown file extension in " + filelower);
             return;
         }
-        System.out.println("written to new file " + destfile);
+        System.out.println("written to new file " + destfile1 + ", " + destfile2 + ", " + destfile3);
         System.out.println("done!");
     }
 }
@@ -1668,6 +1503,7 @@ class Relations {
     public void setId(String id) {
         this.id = id;
     }
+
     /*
     public String getVersion() {
         return version;

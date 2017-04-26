@@ -240,48 +240,6 @@ public class OSMInfoSave {
         }
     }
 
-    /*public static void all2Node(String filePath, ArrayList group) {
-        int i,j;
-        File file = new File(filePath);
-        BufferedReader reader = null;
-        try {
-            reader = new BufferedReader(new FileReader(file), 10 * 1024 * 1024);
-            String stringLine = null;
-            for(i=0; i<group.size(); i++) {
-                while ((stringLine = reader.readLine()) != null) {
-                    if(stringLine.indexOf((String) group.get(i)) >= 0) {
-                        int l = stringLine.indexOf("\"");
-                        group.set(i, stringLine.substring(l));
-                    }
-                }
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }*/
-
-    public static void WKT(String resultPath, String nodePath, String wayPath, String relationPath) {
-        File file = new File(nodePath);
-        BufferedReader reader = null;
-        String buf;
-        int i;
-        try {
-            reader = new BufferedReader(new FileReader(file), 10 * 1024 * 1024);
-            String stringLine = null;
-            String newstr = null;
-            while ((stringLine = reader.readLine()) != null) {
-                //stringLine
-
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     public static void main(String[] args) {
         String filePathTaiwan = "F:\\Data\\OSM\\taiwan-latest.osm";
         String encodeT = HandleFiles.getFileEncode(filePathTaiwan);

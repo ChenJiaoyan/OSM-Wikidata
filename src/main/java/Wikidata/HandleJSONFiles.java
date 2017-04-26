@@ -50,8 +50,11 @@ public class HandleJSONFiles {
                 }*/
 
 
-                /*// 中间文件生成
-                // 记录下wikidata中的ID及其对应的英文名，以便最后生成rdf，因为OSM中有些实体只有中文名
+                /**
+                 * 中间文件生成, 生成WikiName_en&&ID.csv
+                 * 记录下wikidata中的ID及其对应的英文名，以便最后生成rdf，因为OSM中有些实体只有中文名
+                 * /
+                /*
                 String namebuf = "\"" + country +"\":{\"language\":\"" + country + "\",\"value\":\"";
                 int len = newstr.indexOf(namebuf);
                 if(len >= 0) {
@@ -79,8 +82,6 @@ public class HandleJSONFiles {
                 }
             }
             reader.close();
-            //System.out.println("all " + all + "\tr" + r + "\tzh" + zh);
-            //HandleFiles.WirteFile("F:/Wikiquantity.txt", country + "\r\n" + all + "\r\n" + r + "\r\n" + zh + "\r\n");
         }
         catch(FileNotFoundException e){
         }
