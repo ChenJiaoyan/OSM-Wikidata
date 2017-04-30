@@ -15,7 +15,7 @@ public class OSM_Wikidata {
     static String Name_zh = null;
     static String Name_en = null;
     static String WKT = null;
-    static String URL = null;
+    static String URI = null;
     static HashMap<String, ArrayList<String>> SameAs = null;
 
     public void setID(String ID) {
@@ -38,8 +38,8 @@ public class OSM_Wikidata {
         Name_en = name_en;
     }
 
-    public void setURL(String URL) {
-        this.URL = URL;
+    public void setURI(String URI) {
+        this.URI = URI;
     }
 
     public void setWKT(String WKT) {
@@ -74,8 +74,8 @@ public class OSM_Wikidata {
         return Name_en;
     }
 
-    public static String getURL() {
-        return URL;
+    public static String getURI() {
+        return URI;
     }
 
     public static String getWKT() {
@@ -111,7 +111,7 @@ public class OSM_Wikidata {
                 "\r\t\r\t{\"@value\": \""+ getName_zh() + "\", \"@language\": \"zh\"},\r\n" +
                 "\r\t]";
         String wkt = "\"asWKT\": \"" + getWKT() + "\"";
-        String url = "\"url\": " + getURL();
+        String uri = "\"uri\": " + getURI();
         String s1 = getSameAs().keySet().toString();
         String s2 = new String(s1.substring(1, s1.length()-1));
         String same = "\"sameAs\": {\n" +
@@ -123,7 +123,7 @@ public class OSM_Wikidata {
         rdf.add(type);
         rdf.add(name);
         rdf.add(wkt);
-        rdf.add(url);
+        rdf.add(uri);
         rdf.add(same);
         return rdf;
     }

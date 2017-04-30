@@ -1,6 +1,13 @@
 package OSM_Wikidata;
 
 import FileHandle.HandleFiles;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.vocabulary.OWL;
+import org.apache.jena.vocabulary.RDF;
+import org.apache.jena.vocabulary.RDFS;
+import org.apache.jena.vocabulary.VCARD;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -53,7 +60,7 @@ public class Wikidata extends OSM_Wikidata{
                     relation = OSM2WKT.getRelationByID(str[1], RelationPath);
                     wiki.setWKT(OSM2WKT.relation2WKT(relation));
                 }
-                wiki.setURL("\"http://www.wikidata.org/wiki/" + getID() + "\"");
+                wiki.setURI("\"http://www.wikidata.org/wiki/" + getID() + "\"");
                 ArrayList rdf = new ArrayList();
                 rdf = RDF_Generate();
                 System.out.println("{");
@@ -73,6 +80,88 @@ public class Wikidata extends OSM_Wikidata{
         }
     }
 
+    public static void RDFWriter_Wiki(String OSMwithWiki, String Wiki_NameEn, String RDFfile) {
+        File file = new File(OSMwithWiki);
+        BufferedReader reader = null;
+        try {
+            File rdfFile = new File(RDFfile);
+            if (rdfFile.exists()) rdfFile.delete();
+            rdfFile.createNewFile();
+            reader = new BufferedReader(new FileReader(file), 10 * 1024 * 1024);
+            String s = null;
+            while ((s = reader.readLine()) != null) {
+                String[] str = s.split(",");
+                Wikidata wiki = new Wikidata();
+                wiki.setIDType("wikidata");
+                ArrayList type = new ArrayList();
+                type.add("\"WikiDataEntity\"");
+                wiki.setType(type);
+                wiki.setID(str[3]);
+                wiki.setName_zh(str[2]);
+                wiki.setName_en(OSM2WKT.getEnName(str[3], Wiki_NameEn));
+                ArrayList t = new ArrayList();
+                //t.add("\"OSMEntity\"");
+                //t.add("\"OSM" + toUpperCaseFirstOne(str[0]) + "\"");
+                t.add("OSMEntity");
+                t.add("OSM" + toUpperCaseFirstOne(str[0]));
+                HashMap osm = new HashMap();
+                osm.put("/osm/" + str[0] + "/" + str[1], t);
+                wiki.setSameAs(osm);
+                if(str[0].equals("node")) {
+                    Nodes node = new Nodes();
+                    node = OSM2WKT.getNodebyID(str[1], NodePath);
+                    wiki.setWKT(OSM2WKT.node2WKT(node));
+                }
+                if(str[0].equals("way")) {
+                    Way way = new Way();
+                    way = OSM2WKT.getWaybyID(str[1], WayPath);
+                    wiki.setWKT(OSM2WKT.way2WKT(way));
+                }
+                if(str[0].equals("relation")) {
+                    Relations relation = new Relations();
+                    relation = OSM2WKT.getRelationByID(str[1], RelationPath);
+                    wiki.setWKT(OSM2WKT.relation2WKT(relation));
+                }
+                wiki.setURI("http://www.wikidata.org/wiki/" + wiki.getID());
+
+                // create an empty model
+                Model model = ModelFactory.createDefaultModel();
+                // create the resource and add the properties cascading style
+                String wkt = wiki.getWKT();
+                if(wiki.getWKT() == null)
+                    wkt = "no WKT";
+                String stype = osm.values().toString();
+                String stype1 = new String(stype.substring(2, stype.indexOf(",")));
+                String stype2 = new String(stype.substring(stype.indexOf(",")+2, stype.length()-2));
+                Resource rdf_wiki = model.createResource(wiki.getURI())
+                        .addProperty(OWL.sameAs,
+                                model.createResource()
+                                        .addProperty(RDFS.subPropertyOf, stype2)
+                                        .addProperty(RDF.type, stype1)
+                                        .addProperty(VCARD.UID, String.valueOf(osm.keySet().toArray()[0]))
+                        )
+                        .addProperty(VCARD.NAME, model.createResource()
+                                        .addProperty(RDFS.label, wiki.getName_en())
+                                        .addProperty(RDFS.label, wiki.getName_zh())
+                        )
+                        .addProperty(VCARD.GEO, wkt)
+                        .addProperty(RDF.type, wiki.getType().toString())
+                        .addProperty(VCARD.UID, wiki.getIDType() + "/" + wiki.getID());
+                // now write the model in XML form to a file
+                model.write(System.out);
+                System.out.println("\n");
+                ByteArrayOutputStream sout = new ByteArrayOutputStream();
+                model.write(sout);
+                HandleFiles.WriteFile(RDFfile, sout.toString());
+            }
+            reader.close();
+        } catch (FileNotFoundException e1) {
+            e1.printStackTrace();
+        } catch (IOException e1) {
+            e1.printStackTrace();
+        }
+    }
+
     public static void main(String[] args) {
         // node2RDF
         String Wiki_NameEn = "F:\\Wiki-Name_EN&&ID.csv";
@@ -80,8 +169,10 @@ public class Wikidata extends OSM_Wikidata{
         String OSMwithWiki_China = "F:\\OSMwithWiki_China.csv";
         String RDFfile_Taiwan = "F:\\RDF_Wiki_Taiwan.ttl";
         String RDFfile_China = "F:\\RDF_Wiki_China.ttl";
-        RDF_Wiki(OSMwithWiki_Taiwan, Wiki_NameEn, RDFfile_Taiwan);
-        RDF_Wiki(OSMwithWiki_China, Wiki_NameEn, RDFfile_China);
+        //RDF_Wiki(OSMwithWiki_Taiwan, Wiki_NameEn, RDFfile_Taiwan);
+        //RDF_Wiki(OSMwithWiki_China, Wiki_NameEn, RDFfile_China);
+        RDFWriter_Wiki(OSMwithWiki_Taiwan, Wiki_NameEn, RDFfile_Taiwan);
+        RDFWriter_Wiki(OSMwithWiki_China, Wiki_NameEn, RDFfile_China);
     }
 
 }
