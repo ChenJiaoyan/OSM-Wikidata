@@ -113,6 +113,11 @@
 			<artifactId>jena-core</artifactId>
 			<version>3.2.0</version>
 		</dependency>
+		<dependency>
+			<groupId>org.apache.jena</groupId>
+			<artifactId>jena-iri</artifactId>
+			<version>3.2.0</version>
+		</dependency>
 
 
 	</dependencies>

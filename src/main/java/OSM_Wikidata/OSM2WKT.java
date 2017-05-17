@@ -89,10 +89,23 @@ public class OSM2WKT extends DefaultHandler {
      * 用HashMap进行存储内存会溢出，这是OSMtoWKT使用的方法
      * 需要另寻他法——先存到文件中保存起来，再进行匹配
      */
+    /*
     private static String NodePath = "F:\\NodePath.txt";
     private static String WayPath = "F:\\WayPath.txt";
     private static String RelationPath = "F:\\RelationPath.txt";
+    */
+    //运行中国台湾的数据时：
 
+    private static String NodePath = "F:\\NodePath_Taiwan.txt";
+    private static String WayPath = "F:\\WayPath_Taiwan.txt";
+    private static String RelationPath = "F:\\RelationPath_Taiwan.txt";
+
+    //运行中国的数据时：
+    /*
+    private static String NodePath = "F:\\NodePath_China.txt";
+    private static String WayPath = "F:\\WayPath_China.txt";
+    private static String RelationPath = "F:\\RelationPath_China.txt";
+    */
     boolean Type = false, temTympe = false;
     private Integer countp = 0;
     private Integer countw = 0;
@@ -979,9 +992,12 @@ public class OSM2WKT extends DefaultHandler {
         return WKT_TAG_BEGIN_POINT + node.getLon() + WKT_TAG_MARKADD + node.getLat() + WKT_TAG_END;
     }
 
-    public static String way2WKT(Way way) {
+    public static String way2WKT(Way way, String nodePath) {
         String str = "";
         Vector<String> s = way.getPointids();
+        if(s == null) {
+            return "";
+        }
         if(polygonOrPolyline(s)) {
             str += WKT_TAG_BEGIN_POL;
         } else {
@@ -989,7 +1005,7 @@ public class OSM2WKT extends DefaultHandler {
         }
         for (int i = 0; i < s.size(); i++) {
             String l = s.elementAt(i);
-            Nodes mark = getNodebyID(l, NodePath);
+            Nodes mark = getNodebyID(l, nodePath);
             str += mark.getLon() + WKT_TAG_MARKADD + mark.getLat();
             if (i + 1 < s.size()) {
                 str += WKT_TAG_MARKSEP1 + WKT_TAG_MARKSEP2;
@@ -998,36 +1014,56 @@ public class OSM2WKT extends DefaultHandler {
         str += WKT_TAG_END + WKT_TAG_BREAK;
         return str;
     }
+    private static Vector getNoSameObjectVector(Vector vector){
+        Vector tempVector = new Vector();
+        HashSet set = new HashSet(vector);
+        //addAll(Collection c);  //可以接受Set和List类型的参数
+        tempVector.addAll(set);
+        return tempVector;
 
-    public static String relation2WKT(Relations relation) {
+    }
+    public static String relation2WKT(Relations relation, String nodePath, String wayPath, String relationPath) {
+        System.out.println("Before:" + relation.getnodeIDs() + "," + relation.getwayIDs());
         String str = "";
+        Vector<String> noder = relation.getnodeIDs();
+        Vector<String> wayr = relation.getwayIDs();
         if(relation.getrelationIDs() != null) {
-            for(int i = 0; i < relation.getrelationIDs().size(); i++) {
+            for (int i = 0; i < relation.getrelationIDs().size(); i++) {
                 String sr = relation.getrelationIDs().elementAt(i);
-                Relations re = getRelationByID(sr, RelationPath);
-                Vector<String> noder = relation.getnodeIDs();
-                Vector<String> wayr = relation.getwayIDs();
-                for(int j = 0; j < re.getnodeIDs().size(); j++) {
-                    noder.add(re.getnodeIDs().elementAt(j));
+                /**
+                 * 很神奇，在osm文件里relation的relation reference中，找不到对应的node id或way id
+                 * 比如说，relation,270056,中国,Q148，有<member type="relation" ref="913011" role="subarea"/>这条reference，
+                 * 但是在osm文件里搜索不到id为913011的relation、
+                 */
+                Relations re = getRelationByID(sr, relationPath);
+                if (re != null && re.getnodeIDs() != null) {
+                    for (int j = 0; j < re.getnodeIDs().size(); j++) {
+                        noder.add(re.getnodeIDs().elementAt(j));
+                    }
                 }
-                relation.setnodeIDs(noder);
-                for(int k = 0; k < re.getwayIDs().size(); k++) {
-                    wayr.add(re.getwayIDs().elementAt(k));
+                if (re != null && re.getwayIDs() != null) {
+                    for (int k = 0; k < re.getwayIDs().size(); k++) {
+                        wayr.add(re.getwayIDs().elementAt(k));
+                    }
                 }
-                relation.setwayIDs(wayr);
             }
+            getNoSameObjectVector(noder);
+            getNoSameObjectVector(wayr);
+            relation.setnodeIDs(noder);
+            relation.setwayIDs(wayr);
         }
         //System.out.println(relation.getId() + relation.getTag() + relation.getnodeIDs() + "," + relation.getwayIDs());
         //System.out.println(relation.getnodeIDs() == null);
         // 如果经过处理的relation只有node的reference
+        System.out.println("After:" + relation.getnodeIDs() + "," + relation.getwayIDs());
         if(relation.getnodeIDs() != null  && relation.getwayIDs() == null) {
             if(relation.getnodeIDs().size() == 1) {
-                Nodes node = getNodebyID(relation.getnodeIDs().elementAt(0), NodePath);
+                Nodes node = getNodebyID(relation.getnodeIDs().elementAt(0), nodePath);
                 str += WKT_TAG_BEGIN_POINT + node.getLon() + WKT_TAG_MARKADD + node.getLat() + WKT_TAG_END;
             } else {
                 str += WKT_TAG_BEGIN_MULPOI;
                 for(int i = 0; i < relation.getnodeIDs().size(); i++) {
-                    Nodes node = getNodebyID(relation.getnodeIDs().elementAt(i), NodePath);
+                    Nodes node = getNodebyID(relation.getnodeIDs().elementAt(i), nodePath);
                     str += node.getLon() + WKT_TAG_MARKADD + node.getLat();
                     if (i + 1 < relation.getnodeIDs().size()) {
                         str += WKT_TAG_MARKSEP1 + WKT_TAG_MARKSEP2;
@@ -1042,14 +1078,14 @@ public class OSM2WKT extends DefaultHandler {
             int l = 0; //判断way的集合中是否有LINESTRING的WKT格式
             int g = 0; //判断way的集合中是否有POLYGON的WKT格式
             if(relation.getwayIDs().size() == 1) {
-                Way way = getWaybyID(relation.getwayIDs().elementAt(0), WayPath);
-                str += way2WKT(way);
+                Way way = getWaybyID(relation.getwayIDs().elementAt(0), wayPath);
+                str += way2WKT(way, wayPath);
             } else if(relation.getwayIDs().size() > 1) {
                 Way way = new Way();
                 String[] wayset = new String[relation.getwayIDs().size() + 1];
                 for(int i=0; i<relation.getwayIDs().size(); i++) {
-                    way = getWaybyID(relation.getwayIDs().elementAt(i), WayPath);
-                    wayset[i] = way2WKT(way);
+                    way = getWaybyID(relation.getwayIDs().elementAt(i), wayPath);
+                    wayset[i] = way2WKT(way, wayPath);
                     if(wayset[i].indexOf(WKT_TAG_BEGIN_POINT) == 0) p = 1;
                     if(wayset[i].indexOf(WKT_TAG_BEGIN_LINE) == 0) l = 1;
                     if(wayset[i].indexOf(WKT_TAG_BEGIN_POL) == 0) g = 1;
@@ -1083,26 +1119,30 @@ public class OSM2WKT extends DefaultHandler {
         if(relation.getnodeIDs() != null && relation.getwayIDs() != null) {
             str += WKT_TAG_BEGIN_GEOCOL;
             if(relation.getnodeIDs().size() == 1) {
-                Nodes node = getNodebyID(relation.getnodeIDs().elementAt(0), NodePath);
+                Nodes node = getNodebyID(relation.getnodeIDs().elementAt(0), nodePath);
                 str += WKT_TAG_BEGIN_POINT + node.getLon() + WKT_TAG_MARKADD + node.getLat();
-                str += WKT_TAG_MARKSEP1 + WKT_TAG_MARKSEP2;
             } else if (relation.getnodeIDs().size() > 1) {
                 str += WKT_TAG_BEGIN_MULPOI;
                 for(int i = 0; i < relation.getnodeIDs().size(); i++) {
-                    Nodes node = getNodebyID(relation.getnodeIDs().elementAt(i), NodePath);
+                    Nodes node = getNodebyID(relation.getnodeIDs().elementAt(i), nodePath);
                     str += node.getLon() + WKT_TAG_MARKADD + node.getLat();
-                    str += WKT_TAG_MARKSEP1 + WKT_TAG_MARKSEP2;
+                    if(i + 1 <  relation.getnodeIDs().size()) {
+                        str += WKT_TAG_MARKSEP1 + WKT_TAG_MARKSEP2;
+                    }
                 }
             }
+
+            str += WKT_TAG_END + WKT_TAG_MARKSEP1 + WKT_TAG_MARKSEP2;
+
             if(relation.getwayIDs().size() == 1) {
-                Way way = getWaybyID(relation.getwayIDs().elementAt(0), WayPath);
-                str += way2WKT(way);
+                Way way = getWaybyID(relation.getwayIDs().elementAt(0), wayPath);
+                str += way2WKT(way, wayPath);
             } else if(relation.getwayIDs().size() > 1) {
                 Way way = new Way();
                 String[] wayset = new String[relation.getwayIDs().size() + 1];
                 for (int i = 0; i < relation.getwayIDs().size(); i++) {
                     way = getWaybyID(relation.getwayIDs().elementAt(i), WayPath);
-                    str += way2WKT(way);
+                    str += way2WKT(way, wayPath);
                     if(i+1 < relation.getwayIDs().size()) {
                         str += WKT_TAG_MARKSEP1 + WKT_TAG_MARKSEP2;
                     }
@@ -1110,17 +1150,18 @@ public class OSM2WKT extends DefaultHandler {
             }
             str += WKT_TAG_END;
         }
+        //System.out.println(str);
         return str;
     }
 
-    public boolean writeWkt(String wktfile, String feature) {
+    public boolean writeWkt(String wktfile, String feature, String nodePath, String wayPath, String relationPath) {
         System.out.println("writing wkt file ...");
         try {
             File wkt = new File(wktfile);
             if (wkt.exists()) wkt.delete();
             wkt.createNewFile();
             if(feature.equals("node")) {
-                File nodefile = new File(NodePath);
+                File nodefile = new File(nodePath);
                 BufferedReader nodereader = null;
                 try {
                     nodereader = new BufferedReader(new FileReader(nodefile), 10 * 1024 * 1024);
@@ -1142,7 +1183,7 @@ public class OSM2WKT extends DefaultHandler {
                 }
             }
             if(feature.equals("way")) {
-                File wayfile = new File(WayPath);
+                File wayfile = new File(wayPath);
                 BufferedReader wayreader = null;
                 try {
                     wayreader = new BufferedReader(new FileReader(wayfile), 10 * 1024 * 1024);
@@ -1153,8 +1194,8 @@ public class OSM2WKT extends DefaultHandler {
                         if(w == null) {
                             continue;
                         }
-                        System.out.println(w.getId() + w.getTag() + w.getPointids() + "\n" + way2WKT(w));
-                        HandleFiles.WriteFile(wktfile, w.getId() + SplitStr + w.getTag() + SplitStr + way2WKT(w) + "\r\n");
+                        System.out.println(w.getId() + w.getTag() + w.getPointids() + "\n" + way2WKT(w, wayPath));
+                        HandleFiles.WriteFile(wktfile, w.getId() + SplitStr + w.getTag() + SplitStr + way2WKT(w, wayPath) + "\r\n");
                     }
                     wayreader.close();
                 } catch (FileNotFoundException e1) {
@@ -1176,8 +1217,8 @@ public class OSM2WKT extends DefaultHandler {
                         if(r == null) {
                             continue;
                         }
-                        System.out.println(r.getId() + "," + r.getTag() + "\n" + relation2WKT(r));
-                        HandleFiles.WriteFile(wktfile, r.getId() + SplitStr + r.getTag() + SplitStr + relation2WKT(r) + "\r\n");
+                        System.out.println(r.getId() + "," + r.getTag() + "\n" + relation2WKT(r, nodePath, wayPath, relationPath));
+                        HandleFiles.WriteFile(wktfile, r.getId() + SplitStr + r.getTag() + SplitStr + relation2WKT(r, nodePath, wayPath, relationPath) + "\r\n");
                     }
                     relationreader.close();
                 } catch (FileNotFoundException e1) {
@@ -1241,7 +1282,13 @@ public class OSM2WKT extends DefaultHandler {
         String relation = "relation";
         int translateX = 0;
         int translateY = 0;
-        String file = "F:/taiwan-latest.osm";
+        //先运行中国台湾的数据，再运行中国的数据，这里要注意对
+        //NodePath = "F:\\NodePath.txt";
+        //WayPath = "F:\\WayPath.txt";
+        //RelationPath = "F:\\RelationPath.txt";
+        //文档的保存、重命名
+        //String file = "F:/taiwan-latest.osm";
+        String file = "F:/china-latest.osm";
         String destfile1 = "F:\\OSM2WKT_Node.txt";
         String destfile2 = "F:\\OSM2WKT_Way.txt";
         String destfile3 = "F:\\OSM2WKT_Relation.txt";
@@ -1253,35 +1300,37 @@ public class OSM2WKT extends DefaultHandler {
         String filelower = file.toLowerCase();
 
         System.out.println("converting file " + file + " ...");
-        if (filelower.endsWith(FILE_EXT_OSM)) {
-            /*if (!obj.readOSM(file))
-                return;*/
+        /*if (filelower.endsWith(FILE_EXT_OSM)) {
+            if (!obj.readOSM(file))
+                return;
             //obj.readOSM(file);
             /*if (!obj.transformCoordinates())
                 return;*/
             /*
             if (!obj.writeWkt(destfile1, node))
                 return;
-                */
+
             if (!obj.writeWkt(destfile2, way))
                 return;
             if (!obj.writeWkt(destfile3, relation))
-                return;
-        } else if (filelower.endsWith(FILE_EXT_WKT)) {
+                return;*/
+        /*} else if (filelower.endsWith(FILE_EXT_WKT)) {
             if (!obj.readWkt(file))
                 return;
-            if (!obj.writeWkt(destfile1, node))
+            if (!obj.writeWkt(destfile1, node, NodePath, WayPath, RelationPath))
                 return;
-            if (!obj.writeWkt(destfile2, way))
+            if (!obj.writeWkt(destfile2, way, NodePath, WayPath, RelationPath))
                 return;
-            if (!obj.writeWkt(destfile3, relation))
+            if (!obj.writeWkt(destfile3, relation, NodePath, WayPath, RelationPath))
                 return;
         } else {
             System.out.println("unknown file extension in " + filelower);
             return;
-        }
+        }*/
+        String s = way2WKT(getWaybyID("101917176", WayPath), NodePath);
         System.out.println("written to new file " + destfile1 + ", " + destfile2 + ", " + destfile3);
         System.out.println("done!");
+        System.out.println(s);
     }
 }
 
