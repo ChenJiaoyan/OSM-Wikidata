@@ -176,6 +176,8 @@ public class OSM extends OSM_Wikidata{
                 model.write(System.out, "RDF/XML-ABBREV");
                 //model.write(System.out, "N-TRIPLES");
                 System.out.println("\n");
+                FileWriter outTest = new FileWriter("F:\\RDF_OSM_Test.ttl");
+                model.write( outTest, "RDF/XML-ABBREV" );
             }
             reader.close();
         } catch (FileNotFoundException e1) {

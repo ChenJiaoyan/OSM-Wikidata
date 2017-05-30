@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="antlr-2.7.4">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/../OSM-Wikidata-2/jar/antlr chardet cpdetector jar包/antlr-2.7.4.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../OSM-Wikidata-2/jar/antlr chardet cpdetector jar包/chardet-1.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../OSM-Wikidata-2/jar/antlr chardet cpdetector jar包/cpdetector_1.0.8.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
