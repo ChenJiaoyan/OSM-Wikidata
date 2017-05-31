@@ -127,6 +127,73 @@ public class OSMInfoSave {
         }
     }
 
+    public static void OSMFileSave2(String filePath, String encode, String resultPath, String key) throws Exception {
+        File file = new File(filePath);
+        BufferedReader reader = null;
+        String[] feature = {"node", "way", "relation"};
+        int i,j,k,l;
+        try {
+            reader = new BufferedReader(new FileReader(file), 10 * 1024 * 1024);
+            String stringLine = null;
+            String newstr = null;
+            for(i=0; i<3; i++) { //为了保持OSM文件的XML格式，最前面三行的内容需加上
+                stringLine = reader.readLine();
+                HandleFiles.WriteFile(resultPath, stringLine + "\r\n");
+                System.out.println(stringLine);
+            }
+            ArrayList strGroup = new ArrayList();
+            while ((stringLine = reader.readLine()) != null) {
+                /*newstr = new String(stringLine.getBytes(encode), encode).trim();
+                if(newstr.indexOf("node id=\"4745800228\"") > 0) {
+                    while (newstr.indexOf("<way id=") < 0) {
+                        HandleFiles.WriteFile("F:\\haha.txt", stringLine + "\r\n");
+                        stringLine = reader.readLine();
+                        //System.out.println(stringLine);
+                        newstr = new String(stringLine.getBytes(encode), encode).trim();
+                    }
+                    HandleFiles.WriteFile("F:\\haha.txt", stringLine);
+                    System.out.println("Done!");
+                }*/
+
+                for(int r=0; r<3; r++) {
+                    // China数据运行的时候，r=0（node）这部分运行结束之后，way和relation的数据存储卡壳了，只有把r设成从1开始才能得到way和relation的数据
+                    // 但是"OSMwithWiki_China.osm"可以正常跑出来，不知为何
+                    if(newstr.indexOf(feature[r] + " id=\"") > 0) {
+                        while(newstr.indexOf("<tag k=\"" + key + "\" v=\"") < 0 && newstr.indexOf("</" + feature[r] + ">") < 0) {
+                            strGroup.add(stringLine + "\r\n");
+                            stringLine = reader.readLine();
+                            newstr = new String(stringLine.getBytes(encode), encode).trim();
+                        }
+                        if(newstr.indexOf("<tag k=\"" + key + "\" v=\"") == 0) { //如果这些node id/way id/relation id确实有这个key
+                            for(i=0; i<strGroup.size(); i++) {
+                                HandleFiles.WriteFile(resultPath, (String) strGroup.get(i));
+                                System.out.print((String) strGroup.get(i));
+                            }
+                            strGroup.clear();
+                            HandleFiles.WriteFile(resultPath, stringLine + "\r\n");
+                            System.out.println(stringLine);
+                            while(newstr.indexOf("</" + feature[r] + ">") < 0) {
+                                stringLine = reader.readLine();
+                                HandleFiles.WriteFile(resultPath, stringLine + "\r\n");
+                                System.out.println(stringLine);
+                                newstr = new String(stringLine.getBytes(encode), encode).trim();
+                            }
+                        }
+                    }
+                    strGroup.clear();
+                }
+                if(stringLine.equals("</osm>")) { //为了保持OSM文件的XML格式，最后一行的内容需加上
+                    HandleFiles.WriteFile(resultPath, "</osm>");
+                    System.out.println("</osm>");
+                    break;
+                }
+            }
+            reader.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
     public static void OSMFileHandle(String filePath, String encode, String resultPath, String nodePath, String wayPath,  String relationPath, String key) throws Exception {
         File file = new File(filePath);
         BufferedReader reader = null;
@@ -241,9 +308,9 @@ public class OSMInfoSave {
     }
 
     public static void main(String[] args) {
-        String filePathTaiwan = "F:\\Data\\OSM\\taiwan-latest.osm";
+        String filePathTaiwan = "F:\\taiwan-latest.osm";
         String encodeT = HandleFiles.getFileEncode(filePathTaiwan);
-        String filePathChina = "F:\\Data\\OSM\\china-latest.osm";
+        String filePathChina = "F:\\china-latest.osm";
         String encodeC = HandleFiles.getFileEncode(filePathChina);
         String resultPathChina = "F:\\OSMwithWiki_China.osm";
         String resultPathTaiwan = "F:\\OSMwithWiki_Taiwan.osm";
@@ -255,8 +322,10 @@ public class OSMInfoSave {
         String relationPathTaiwan = "F:\\OSMRelation_Taiwan.txt";
         String key = "wikidata";
         try {
-            OSMFileSave(filePathTaiwan, encodeT, resultPathTaiwan, nodePathTaiwan, wayPathTaiwan, relationPathTaiwan , key);
-            OSMFileSave(filePathChina, encodeC, resultPathChina, nodePathChina, wayPathChina, relationPathChina, key);
+            //OSMFileSave(filePathTaiwan, encodeT, resultPathTaiwan, nodePathTaiwan, wayPathTaiwan, relationPathTaiwan , key);
+            //OSMFileSave(filePathChina, encodeC, resultPathChina, nodePathChina, wayPathChina, relationPathChina, key);
+            //OSMFileSave2(filePathTaiwan, encodeT, resultPathTaiwan, key);
+            OSMFileSave2(filePathChina, encodeC, resultPathChina, key);
         } catch (IOException e) {
             e.printStackTrace();
         } catch (Exception e) {
