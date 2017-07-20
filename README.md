@@ -11,8 +11,31 @@
 "F:\\OSMwithWiki_China.csv";
 格式是：node/way/relation, OSM ID, Name, Wikidata ID
 
-运行/src/main/java/OSM_Wikidata下的OSM2WKT，java文件，可以得到将OSM中所有feature（node、way、relation）的地理数据转成WKT格式的结果
-这只是为了记录，真正需要的是node2WKT(), way2WKT(), relation2WKT()函数，为生成RDF做准备
+运行/src/main/java/OSM_Wikidata下的OSM2WKT.java文件，可以得到将OSM中所有feature（node、way、relation）的地理数据转成WKT格式的结果
+这只是为了记录，真正需要的是node2WKT(), way2WKT(), relation2WKT()函数，为生成RDF做准备[实际操作中也就直接用函数，没另外存WKT文件]
+并且记录下OSM文件中所有的node、way、relation信息, 也是为了WKT格式转换和RDF生成存储中间数据
+格式是：
+node ID--经度--纬度--name、
+way ID--name--引用的节点集合
+relation ID--name--引用的node集合--引用的way集合--引用的relation集合
+//中国台湾的数据：
+//(All)
+"F:\\NodePath_Taiwan.txt";
+"F:\\WayPath_Taiwan.txt";
+"F:\\RelationPath_Taiwan.txt";
+//(Wiki)
+"F:\\NodePath_Taiwan(Wiki).txt";
+"F:\\WayPath_Taiwan(Wiki).txt";
+"F:\\RelationPath_Taiwan(Wiki).txt";
+//中国的数据：
+//(All)
+"F:\\NodePath_China.txt";
+"F:\\WayPath_China.txt";
+"F:\\RelationPath_China.txt";
+//(Wiki)
+"F:\\NodePath(Wiki)_China.txt";
+"F:\\WayPath(Wiki)_China.txt";
+"F:\\RelationPath(Wiki)_China.txt";
 
 运行/src/main/java/OSM_Wikidata下的OSM.java文件，得到OSM数据的RDF格式：
 "F:\\RDF_OSM_Taiwan.ttl";
@@ -20,6 +43,8 @@
 运行/src/main/java/OSM_Wikidata下的Wikidata.java文件，得到Wikidata数据的RDF格式：
 "F:\\RDF_Wiki_Taiwan.ttl";
 "F:\\RDF_Wiki_China.ttl";
+运行/src/main/java/OSM_Wikidata下的RDF.java文件，得到OSM数据和Wikidata数据的RDF格式（代码优化）
+
 
 另外，
 运行/src/main/java/Wikidata下的HandleJSONFiles.java文件，还可以生成WikidatawithOSM.json，Wikidata中有OSM链接的原始数据保存下来

@@ -77,7 +77,7 @@ public class Wikidata extends OSM_Wikidata{
         }
     }
 
-    public static void RDFWriter_Wiki(String OSMwithWiki, String Wiki_NameEn, String RDFfile, String NodePath, String WayPath, String RelationPath) {
+    public static void RDFWriter_Wiki(String OSMwithWiki, String Wiki_NameEn, String RDFfile, String NodeWikiPath, String NodePath, String WayPath, String RelationPath) {
         File file = new File(OSMwithWiki);
         BufferedReader reader = null;
         // create an empty model
@@ -119,49 +119,75 @@ public class Wikidata extends OSM_Wikidata{
                 HashMap osm = new HashMap();
                 osm.put("/osm/" + str[0] + "/" + str[1], t);
                 wiki.setSameAs(osm);
+
                 if(str[0].equals("node")) {
                     Nodes node = new Nodes();
-                    node = OSM2WKT.getNodebyID(str[1], NodePath);
+                    node = OSM2WKT.getNodebyID(str[1], NodeWikiPath);
                     wiki.setWKT(OSM2WKT.node2WKT(node));
                 }
+
                 if(str[0].equals("way")) {
                     Way way = new Way();
                     way = OSM2WKT.getWaybyID(str[1], WayPath);
-                    wiki.setWKT(OSM2WKT.way2WKT(way, WayPath));
+                    wiki.setWKT(OSM2WKT.way2WKT(way, NodePath));
                 }
+
                 if(str[0].equals("relation")) {
                     Relations relation = new Relations();
                     relation = OSM2WKT.getRelationByID(str[1], RelationPath);
                     wiki.setWKT(OSM2WKT.relation2WKT(relation, NodePath, WayPath, RelationPath));
                 }
+
                 wiki.setURI("http://www.wikidata.org/wiki/" + wiki.getID());
 
                 // create the resource and add the properties cascading style
                 String wkt = wiki.getWKT();
-                if(wiki.getWKT() == null)
-                    wkt = "no WKT";
-                String stype = osm.values().toString();
-                String stype1 = new String(stype.substring(2, stype.indexOf(",")));
-                String stype2 = new String(stype.substring(stype.indexOf(",")+2, stype.length()-2));
-                rdf_wiki = model.createResource(wiki.getURI())
-                        .addProperty(OWL.sameAs,
-                                model.createResource()
-                                        .addProperty(VCARD.CLASS, stype2)
-                                        .addProperty(RDFS.subClassOf, stype1)
-                                        .addProperty(VCARD.UID, String.valueOf(osm.keySet().toArray()[0]))
-                        )
-                        .addProperty(VCARD.NAME,
-                                model.createResource()
-                                        .addProperty(RDFS.label, model.createLiteral(wiki.getName_en(), "en"))
-                                        .addProperty(RDFS.label, model.createLiteral(wiki.getName_zh(), "zh"))
-                        )
-                        .addProperty(VCARD.GEO, wkt)
-                        .addProperty(RDF.type, wiki.getType().get(0))
-                        .addProperty(VCARD.UID, wiki.getIDType() + "/" + wiki.getID())
+                if(wiki.getWKT() != null) {
+                    if(!wiki.getName_en().equals("No English Name")) {
+                        String stype = osm.values().toString();
+                        String stype1 = new String(stype.substring(2, stype.indexOf(",")));
+                        String stype2 = new String(stype.substring(stype.indexOf(",")+2, stype.length()-2));
+                        rdf_wiki = model.createResource(wiki.getURI())
+                                .addProperty(OWL.sameAs,
+                                        model.createResource()
+                                                .addProperty(VCARD.CLASS, stype2)
+                                                .addProperty(RDFS.subClassOf, stype1)
+                                                .addProperty(VCARD.UID, String.valueOf(osm.keySet().toArray()[0]))
+                                )
+                                .addProperty(VCARD.NAME,
+                                        model.createResource()
+                                                .addProperty(RDFS.label, model.createLiteral(wiki.getName_en(), "en"))
+                                                .addProperty(RDFS.label, model.createLiteral(wiki.getName_zh(), "zh"))
+                                )
+                                .addProperty(VCARD.GEO, wkt)
+                                .addProperty(RDF.type, wiki.getType().get(0))
+                                .addProperty(VCARD.UID, wiki.getIDType() + "/" + wiki.getID())
                         ;
+                    }
+                    else {
+                        String stype = osm.values().toString();
+                        String stype1 = new String(stype.substring(2, stype.indexOf(",")));
+                        String stype2 = new String(stype.substring(stype.indexOf(",")+2, stype.length()-2));
+                        rdf_wiki = model.createResource(wiki.getURI())
+                                .addProperty(OWL.sameAs,
+                                        model.createResource()
+                                                .addProperty(VCARD.CLASS, stype2)
+                                                .addProperty(RDFS.subClassOf, stype1)
+                                                .addProperty(VCARD.UID, String.valueOf(osm.keySet().toArray()[0]))
+                                )
+                                .addProperty(VCARD.NAME, wiki.getName_zh())
+                                .addProperty(VCARD.GEO, wkt)
+                                .addProperty(RDF.type, wiki.getType().get(0))
+                                .addProperty(VCARD.UID, wiki.getIDType() + "/" + wiki.getID())
+                        ;
+                    }
+                }
+
                 // now write the model in XML form to a file
                 model.write(System.out, "RDF/XML-ABBREV");
-                System.out.println("\n");
+                System.out.println(s);
+                FileWriter out = new FileWriter(RDFfile);
+                model.write( out, "RDF/XML-ABBREV" );
                 /*ByteArrayOutputStream sout = new ByteArrayOutputStream();
                 model.write(sout, "RDF/XML-ABBREV");
                 HandleFiles.WriteFile(RDFfile, sout.toString());*/
@@ -172,6 +198,7 @@ public class Wikidata extends OSM_Wikidata{
         } catch (IOException e1) {
             e1.printStackTrace();
         }
+        /*
         FileWriter out = null;
         try {
             out = new FileWriter(RDFfile);
@@ -189,6 +216,7 @@ public class Wikidata extends OSM_Wikidata{
                 // ignore
             }
         }
+        */
         // now write the model in XML form to a file
         /*model.write(System.out, "RDF/XML-ABBREV");
         //model.write(System.out, "N-TRIPLES");
@@ -202,21 +230,36 @@ public class Wikidata extends OSM_Wikidata{
     public static void main(String[] args) {
         // node2RDF
         //-Addition
+
         String Wiki_NameEn = "F:\\Wiki-Name_EN&&ID.csv";
         String OSMwithWiki_Taiwan = "F:\\OSMwithWiki_Taiwan.csv";
         String OSMwithWiki_China = "F:\\OSMwithWiki_China.csv";
         String RDFfile_Taiwan = "F:\\RDF_Wiki_Taiwan.ttl";
         String RDFfile_China = "F:\\RDF_Wiki_China.ttl";
         String NodePath_Taiwan = "F:\\NodePath_Taiwan.txt";
+        String NodeWikiPath_Taiwan = "F:\\NodePath(Wiki)_Taiwan.txt";
         String WayPath_Taiwan = "F:\\WayPath_Taiwan.txt";
         String RelationPath_Taiwan = "F:\\RelationPath_Taiwan.txt";
         String NodePath_China = "F:\\NodePath_China.txt";
+        String NodeWikiPath_China = "F:\\NodePath(Wiki)_China.txt";
         String WayPath_China = "F:\\WayPath_China.txt";
         String RelationPath_China = "F:\\RelationPath_China.txt";
-        //RDF_Wiki(OSMwithWiki_Taiwan, Wiki_NameEn, RDFfile_Taiwan, NodePath_Taiwan, WayPath_Taiwan, RelationPath_Taiwan);
-        //RDF_Wiki(OSMwithWiki_China, Wiki_NameEn, RDFfile_China, NodePath_China, WayPath_China, RelationPath_China);
-        RDFWriter_Wiki(OSMwithWiki_Taiwan, Wiki_NameEn, RDFfile_Taiwan, NodePath_Taiwan, WayPath_Taiwan, RelationPath_Taiwan);
-        RDFWriter_Wiki(OSMwithWiki_China, Wiki_NameEn, RDFfile_China, NodePath_China, WayPath_China, RelationPath_China);
+
+
+        RDF_Wiki(OSMwithWiki_Taiwan, Wiki_NameEn, RDFfile_Taiwan, NodePath_Taiwan, WayPath_Taiwan, RelationPath_Taiwan);
+        RDF_Wiki(OSMwithWiki_China, Wiki_NameEn, RDFfile_China, NodePath_China, WayPath_China, RelationPath_China);
+        //RDFWriter_Wiki(OSMwithWiki_Taiwan, Wiki_NameEn, RDFfile_Taiwan, NodeWikiPath_Taiwan, NodePath_Taiwan, WayPath_Taiwan, RelationPath_Taiwan);
+        //RDFWriter_Wiki(OSMwithWiki_China, Wiki_NameEn, RDFfile_China, NodeWikiPath_China, NodePath_China, WayPath_China, RelationPath_China);
+//
+//        String Wiki_NameEn = "F:\\Wiki-Name_EN&&ID.csv";
+//        String OSMwithWiki_China = "F:\\Test\\OSMwithWiki_China_30.csv";
+//        String RDFfile_China = "F:\\Test\\RDF_Wiki_China_30.ttl";
+//        String NodeWikiPath_China = "F:\\Test\\NodePath(Wiki)_China2_30.txt";
+//        String NodePath_China = "F:\\NodePath_China.txt";
+//        String WayPath_China = "F:\\WayPath_China.txt";
+//        String RelationPath_China = "F:\\RelationPath_China.txt";
+//        RDFWriter_Wiki(OSMwithWiki_China, Wiki_NameEn, RDFfile_China, NodeWikiPath_China, NodePath_China, WayPath_China, RelationPath_China);
+//
     }
 
 }

@@ -79,6 +79,78 @@ public class HandleFiles {
         }
     }
 
+    public static void splitFile(String filePath) throws IOException {
+        File file = new File(filePath);
+        //获取文件名
+        String fileName = file.getName().substring(0, file.getName().indexOf("."));
+        //获取文件后缀
+        String endName = file.getName().substring(file.getName().lastIndexOf("."));
+        System.out.println(endName);
+        BufferedReader reader = null;
+
+        int i = 0, j = 0;
+        try {
+            reader = new BufferedReader(new FileReader(file), 10 * 1024 * 1024);
+            String stringMsg = null;
+            while ((stringMsg = reader.readLine()) != null) {
+                StringBuffer sb = new StringBuffer();
+                sb.append(file.getParent()).append("\\").append(fileName)
+                        .append("_").append(i/10000+1).append(endName);
+                i++;
+                WriteFile(sb.toString(), stringMsg + "\r\n");
+            }
+            reader.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    //文件分割的方法（方法内传入要分割的文件路径以及要分割的份数）
+    public static void splitFile2(File src, int m) {
+        if(src.isFile()) {
+            //获取文件的总长度
+            long l = src.length();
+            //获取文件名
+            String fileName = src.getName().substring(0, src.getName().indexOf("."));
+            //获取文件后缀
+            String endName = src.getName().substring(src.getName().lastIndexOf("."));
+            System.out.println(endName);
+            InputStream in = null;
+            try {
+                in = new FileInputStream(src);
+                for(int i = 1; i <= m; i++) {
+                    StringBuffer sb = new StringBuffer();
+                    sb.append(src.getParent()).append("\\").append(fileName)
+                            .append("_").append(i).append(endName);
+                    System.out.println(sb.toString());
+                    File file2 = new File(sb.toString());
+                    //创建写文件的输出流
+                    OutputStream out = new FileOutputStream(file2);
+                    int len = -1;
+                    byte[] bytes = new byte[10*1024*1024];
+                    //这个根据每次分割的大小不同有所区别
+                    while((len = in.read(bytes)) != -1) {
+                        out.write(bytes, 0, len);
+                        if(file2.length() > (l / m)) {
+                            break;
+                        }
+                    }
+                    out.close();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            finally {
+                try {
+                    in.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+
     /**
      * 由于之前的数据文件出现了乱码，因此先对文件进行解码
      * @param str

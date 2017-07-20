@@ -96,15 +96,17 @@ public class OSM2WKT extends DefaultHandler {
     */
     //运行中国台湾的数据时：
 
-    private static String NodePath = "F:\\NodePath_Taiwan.txt";
-    private static String WayPath = "F:\\WayPath_Taiwan.txt";
-    private static String RelationPath = "F:\\RelationPath_Taiwan.txt";
+    //(Wiki)
+    private static String NodePath = "F:\\NodePath_Taiwan(Wiki).txt";
+    private static String WayPath = "F:\\WayPath_Taiwan(Wiki).txt";
+    private static String RelationPath = "F:\\RelationPath_Taiwan(Wiki).txt";
 
     //运行中国的数据时：
     /*
-    private static String NodePath = "F:\\NodePath_China.txt";
-    private static String WayPath = "F:\\WayPath_China.txt";
-    private static String RelationPath = "F:\\RelationPath_China.txt";
+    //(Wiki)
+    private static String NodePath = "F:\\NodePath(Wiki)_China.txt";
+    private static String WayPath = "F:\\WayPath(Wiki)_China.txt";
+    private static String RelationPath = "F:\\RelationPath(Wiki)_China.txt";
     */
     boolean Type = false, temTympe = false;
     private Integer countp = 0;
@@ -185,7 +187,7 @@ public class OSM2WKT extends DefaultHandler {
             String kcontents = attributes.getValue("k");
             String vcontents = attributes.getValue("v");
             kvcontentsN = kcontents + "-" + vcontents; //这是在没有name的情况下，记录下一个key及其value作为tag
-            if(kcontents.equals(XML_TAG_NAME) || kcontents.equals(XML_TAG_NAME + ":zh")) { //提取出OSM实体way的name.如果有中文名，就记录下中文名
+            if(kcontents.equals(XML_TAG_NAME) || kcontents.equals(XML_TAG_NAME + ":zh")) { //提取出OSM实体node的name.如果有中文名，就记录下中文名
                 plagN = 1;
                 //kvcontentsN = kcontents + "=" + vcontents;
                 kvcontentsN = vcontents;
@@ -700,7 +702,7 @@ public class OSM2WKT extends DefaultHandler {
         return relation;
     }
 
-    private static boolean polygonOrPolyline(Vector<String> nodes) {
+    public static boolean polygonOrPolyline(Vector<String> nodes) {
         //用于区分线和面数据
         //If return true, the poly is a polygon.
         if (nodes == null)
@@ -1288,7 +1290,9 @@ public class OSM2WKT extends DefaultHandler {
         //RelationPath = "F:\\RelationPath.txt";
         //文档的保存、重命名
         //String file = "F:/taiwan-latest.osm";
-        String file = "F:/china-latest.osm";
+        String file = "F:/OSMwithWiki_Taiwan.osm";
+        //String file = "F:/china-latest.osm";
+        //String file = "F:/OSMwithWiki_China.osm";
         String destfile1 = "F:\\OSM2WKT_Node.txt";
         String destfile2 = "F:\\OSM2WKT_Way.txt";
         String destfile3 = "F:\\OSM2WKT_Relation.txt";
@@ -1300,6 +1304,7 @@ public class OSM2WKT extends DefaultHandler {
         String filelower = file.toLowerCase();
 
         System.out.println("converting file " + file + " ...");
+        obj.readOSM(file);
         /*if (filelower.endsWith(FILE_EXT_OSM)) {
             if (!obj.readOSM(file))
                 return;
@@ -1327,10 +1332,11 @@ public class OSM2WKT extends DefaultHandler {
             System.out.println("unknown file extension in " + filelower);
             return;
         }*/
-        String s = way2WKT(getWaybyID("101917176", WayPath), NodePath);
-        System.out.println("written to new file " + destfile1 + ", " + destfile2 + ", " + destfile3);
+        //String s = way2WKT(getWaybyID("101917176", WayPath), NodePath);
+        //System.out.println(s);
+        //System.out.println("written to new file " + destfile1 + ", " + destfile2 + ", " + destfile3);
         System.out.println("done!");
-        System.out.println(s);
+
     }
 }
 
