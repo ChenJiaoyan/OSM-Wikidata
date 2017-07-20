@@ -46,6 +46,10 @@ relation ID--name--引用的node集合--引用的way集合--引用的relation集
 运行/src/main/java/OSM_Wikidata下的RDF.java文件，得到OSM数据和Wikidata数据的RDF格式（代码优化）
 
 
+运行/src/main/java/OSM_Wikidata下的Tag.java文件，得到OSM链接实体的Tag统计信息：
+"F:\\TagQuantityNWR.txt";
+"F:\\TagQuantityALL.txt";
+
 另外，
 运行/src/main/java/Wikidata下的HandleJSONFiles.java文件，还可以生成WikidatawithOSM.json，Wikidata中有OSM链接的原始数据保存下来
 运行/src/main/java/OSM下的OSMInfoSave.java文件，可以生成OSMwithWiki_Taiwan.osm、OSMwithWiki_China.osm，将OSM中有Wikidata链接的原始数据保存下来，此外还生成一些其他的中间数据
