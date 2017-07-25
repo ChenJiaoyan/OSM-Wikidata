@@ -83,20 +83,19 @@ public class RDF extends DefaultHandler {
 
 /*
     //运行中国台湾的数据时
-    String RDF_OSM_file = "F:\\RDF_OSM_Taiwan";
-    String RDF_Wiki_file = "F:\\RDF_Wiki_Taiwan";
-    String NodePath = "F:\\NodePath_Taiwan.txt";
-    String WayPath = "F:\\WayPath_Taiwan.txt";
-    String RelationPath = "F:\\RelationPath_Taiwan.txt";
+    String RDF_OSM_file = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\RDF_OSM_Taiwan";
+    String RDF_Wiki_file = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\RDF_Wiki_Taiwan";
+    String NodePath = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\NodePath_Taiwan.txt";
+    String WayPath = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\WayPath_Taiwan.txt";
+    String RelationPath = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\RelationPath_Taiwan.txt";
 */
 
-
     //运行中国的数据时
-    String RDF_OSM_file = "F:\\RDF_OSM_China";
-    String RDF_Wiki_file = "F:\\RDF_Wiki_China";
-    String NodePath = "F:\\NodePath_China.txt";
-    String WayPath = "F:\\WayPath_China.txt";
-    String RelationPath = "F:\\RelationPath_China.txt";
+    String RDF_OSM_file = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\RDF_OSM_China";
+    String RDF_Wiki_file = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\RDF_Wiki_China";
+    String NodePath = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\NodePath_China.txt";
+    String WayPath = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\WayPath_China.txt";
+    String RelationPath = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\RelationPath_China.txt";
     
     // create an empty model
     private Model model_OSM = ModelFactory.createDefaultModel();
@@ -128,36 +127,36 @@ public class RDF extends DefaultHandler {
                     n = nodeslist.get(i);
                     n.setTag(kvcontentsWiki);
                     System.out.println("Node Id: " + n.getId() + "\tName: " + kvcontents + "\tZh " + kvcontents_Zh + "\tEn " + kvcontents_En);
-
+/*
                     //运行中国的文件时需要进行文件分块处理，分4次存进模型，为防止堆栈溢出
-                    //运行台湾的数据时不需要
+                    //运行台湾的数据时不需要,其实最后都不需要了233333
                     if(n.getId().equals("2117690354")) {
-//                        writeRDF(model_OSM, RDF_OSM_file + "_N1.xml");
-//                        model_OSM = null;
-//                        model_OSM = ModelFactory.createDefaultModel();
+                        writeRDF(model_OSM, RDF_OSM_file + "_N1.xml");
+                        model_OSM = null;
+                        model_OSM = ModelFactory.createDefaultModel();
                         writeRDF(model_Wiki, RDF_Wiki_file + "_N1.xml");
                         model_Wiki = null;
                         model_Wiki = ModelFactory.createDefaultModel();
                     }
                     if(n.getId().equals("4428919737")) {
-//                        writeRDF(model_OSM, RDF_OSM_file + "_N2.xml");
-//                        model_OSM = null;
-//                        model_OSM = ModelFactory.createDefaultModel();
+                        writeRDF(model_OSM, RDF_OSM_file + "_N2.xml");
+                        model_OSM = null;
+                        model_OSM = ModelFactory.createDefaultModel();
                         writeRDF(model_Wiki, RDF_Wiki_file + "_N2.xml");
                         model_Wiki = null;
                         model_Wiki = ModelFactory.createDefaultModel();
                     }
                     if(n.getId().equals("4583601877")) {
-//                        writeRDF(model_OSM, RDF_OSM_file + "_N3.xml");
-//                        model_OSM = null;
-//                        model_OSM = ModelFactory.createDefaultModel();
+                        writeRDF(model_OSM, RDF_OSM_file + "_N3.xml");
+                        model_OSM = null;
+                        model_OSM = ModelFactory.createDefaultModel();
                         writeRDF(model_Wiki, RDF_Wiki_file + "_N3.xml");
                         model_Wiki = null;
                         model_Wiki = ModelFactory.createDefaultModel();
                     }
-
+*/
                 }
-                //model_OSM = RDFNode_OSM(model_OSM, nodeslist, kvcontents, kvcontents_Zh, kvcontents_En);
+                model_OSM = RDFNode_OSM(model_OSM, nodeslist, kvcontents, kvcontents_Zh, kvcontents_En);
                 model_Wiki = RDFNode_Wiki(model_Wiki, nodeslist, kvcontents, kvcontents_Zh, kvcontents_En);
 //                writeRDF(model_OSM, RDF_OSM_file + "_N.xml");
 //                writeRDF(model_Wiki, RDF_Wiki_file + "_N.xml");
@@ -256,7 +255,7 @@ public class RDF extends DefaultHandler {
                     n.setLon(loncontents);
                     n.setLat(latcontents);
                     n.setTag(kvcontentsWiki);
-                    //model_OSM = RDFNode_OSM(model_OSM, nodeslist, kvcontents, kvcontents_Zh, kvcontents_En);
+                    model_OSM = RDFNode_OSM(model_OSM, nodeslist, kvcontents, kvcontents_Zh, kvcontents_En);
                     model_Wiki = RDFNode_Wiki(model_Wiki, nodeslist, kvcontents, kvcontents_Zh, kvcontents_En);
                 }
                 nodeslist.clear();;
@@ -278,15 +277,19 @@ public class RDF extends DefaultHandler {
                 writeRDF(model_Wiki, RDF_Wiki_file + "_N.xml");
                 */
                 //运行中国的文件时需要进行文件分块处理，分4次存进模型，为防止堆栈溢出
-                //运行台湾的数据时不需要
+                //运行台湾的数据时不需要，其实最后都不需要了233333
 
-//                writeRDF(model_OSM, RDF_OSM_file + "_N4.xml");
-//                model_OSM = null;
-//                model_OSM = ModelFactory.createDefaultModel();
+                writeRDF(model_OSM, RDF_OSM_file + "_N.xml");
+                writeRDF(model_Wiki, RDF_Wiki_file + "_N.xml");
+                /*
+                writeRDF(model_OSM, RDF_OSM_file + "_N4.xml");
+                model_OSM = null;
+                model_OSM = ModelFactory.createDefaultModel();
 
                 writeRDF(model_Wiki, RDF_Wiki_file + "_N4.xml");
                 model_Wiki = null;
                 model_Wiki = ModelFactory.createDefaultModel();
+                */
                 saveNode = 1;
             }
 
@@ -338,7 +341,7 @@ public class RDF extends DefaultHandler {
         //对relation操作
         if ("relation".equals(qName)) {
             if(saveWay == 0) {
-                //writeRDF(model_OSM, RDF_OSM_file + "_W.xml");
+                writeRDF(model_OSM, RDF_OSM_file + "_W.xml");
                 writeRDF(model_Wiki, RDF_Wiki_file + "_W.xml");
                 saveWay = 1;
             }
@@ -411,7 +414,7 @@ public class RDF extends DefaultHandler {
                 System.out.print("Polyline");
             }
             System.out.println(way.getPointids());
-            //model_OSM = RDFWay_OSM(model_OSM, way, kvcontents, kvcontents_Zh, kvcontents_En, NodePath);
+            model_OSM = RDFWay_OSM(model_OSM, way, kvcontents, kvcontents_Zh, kvcontents_En, NodePath);
             model_Wiki = RDFWay_Wiki(model_Wiki, way, kvcontents, kvcontents_Zh, kvcontents_En, NodePath);
             kvcontents = "";
             curretntag = "";
@@ -435,7 +438,7 @@ public class RDF extends DefaultHandler {
             relation.setrelationIDs(relationIDs);
             System.out.println("Relation Id:" + relation.getId() + "\tName: " + kvcontents + "Zh " + kvcontents_Zh + "En " + kvcontents_En);
             System.out.println(relation.getnodeIDs() + ", " + relation.getwayIDs() + ", " + relation.getrelationIDs());
-            //model_OSM = RDFRelation_OSM(model_OSM, relation, kvcontents, kvcontents_Zh, kvcontents_En, NodePath, WayPath, RelationPath);
+            model_OSM = RDFRelation_OSM(model_OSM, relation, kvcontents, kvcontents_Zh, kvcontents_En, NodePath, WayPath, RelationPath);
             model_Wiki = RDFRelation_Wiki(model_Wiki, relation, kvcontents, kvcontents_Zh, kvcontents_En, NodePath, WayPath, RelationPath);
             kvcontents = "";
             kvcontents_En = "";
@@ -478,7 +481,7 @@ public class RDF extends DefaultHandler {
             }
             relationlist.clear();
         }
-        //writeRDF(model_OSM, RDF_OSM_file + "_R.xml");
+        writeRDF(model_OSM, RDF_OSM_file + "_R.xml");
         writeRDF(model_Wiki, RDF_Wiki_file + "_R.xml");
     }
     public static Model RDFNode_OSM(Model model, List<Nodes> OSMlist, String Name, String Name_zh, String Name_en) {
@@ -492,7 +495,7 @@ public class RDF extends DefaultHandler {
             osm.setIDType("osm");
             ArrayList type = new ArrayList();
             type.add("OSMEntity");
-            type.add("OSMNpde" );
+            type.add("OSMNode" );
             osm.setType(type);
             osm.setID(node.getId());
             osm.setOSMType(entity);
@@ -995,8 +998,8 @@ public class RDF extends DefaultHandler {
     }
 
     public static void main(String args[]) {
-        String OSMFilePath_Taiwan = "F:\\OSMwithWiki_Taiwan.osm";
-        String OSMFilePath_China = "F:\\OSMwithWiki_China.osm";
+        String OSMFilePath_Taiwan = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\OSMwithWiki_Taiwan.osm";
+        String OSMFilePath_China = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\OSMwithWiki_China.osm";
         RDF rdf = new RDF();
         //rdf.readOSM(OSMFilePath_Taiwan);
         rdf.readOSM(OSMFilePath_China);
