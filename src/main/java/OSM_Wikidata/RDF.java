@@ -76,23 +76,27 @@ public class RDF extends DefaultHandler {
     private Integer tagN = 0;
     //tagIF作为记录含有同一tag key&&value的判断参数
     private Integer tagIF = 0;
+    private Integer saveNode = 0;
+    private Integer saveWay = 0;
 
-
+/*
     //运行中国台湾的数据时
     String RDF_OSM_file = "F:\\RDF_OSM_Taiwan1";
     String RDF_Wiki_file = "F:\\RDF_Wiki_Taiwan1";
     String NodePath = "F:\\NodePath_Taiwan.txt";
     String WayPath = "F:\\WayPath_Taiwan.txt";
     String RelationPath = "F:\\RelationPath_Taiwan.txt";
+*/
 
-    /*
+
     //运行中国的数据时
     String RDF_OSM_file = "F:\\RDF_OSM_China1";
     String RDF_Wiki_file = "F:\\RDF_Wiki_China1";
     String NodePath = "F:\\NodePath_China.txt";
     String WayPath = "F:\\WayPath_China.txt";
     String RelationPath = "F:\\RelationPath_China.txt";
-    */
+
+
     // create an empty model
     private Model model_OSM = ModelFactory.createDefaultModel();
     // create an empty model
@@ -122,11 +126,13 @@ public class RDF extends DefaultHandler {
                     Nodes n = new Nodes();
                     n = nodeslist.get(i);
                     n.setTag(kvcontentsWiki);
-                    System.out.println("Node Id: " + n.getId() + "\tName: " + kvcontents + "Zh " + kvcontents_Zh + "En " + kvcontents_En);
+                    System.out.println("Node Id: " + n.getId() + "\tName: " + kvcontents + "\tZh " + kvcontents_Zh + "\tEn " + kvcontents_En);
                 }
-                RDFNode_OSM(model_OSM, nodeslist, kvcontents, kvcontents_Zh, kvcontents_En, RDF_OSM_file + "_N.ttl");
-                RDFNode_Wiki(model_Wiki, nodeslist, kvcontents, kvcontents_Zh, kvcontents_En, RDF_Wiki_file + "_N.ttl");
-                nodeslist.clear();;
+                model_OSM = RDFNode_OSM(model_OSM, nodeslist, kvcontents, kvcontents_Zh, kvcontents_En, RDF_OSM_file + "_N.xml");
+                //model_Wiki = RDFNode_Wiki(model_Wiki, nodeslist, kvcontents, kvcontents_Zh, kvcontents_En, RDF_Wiki_file + "_N.xml");
+//                writeRDF(model_OSM, RDF_OSM_file + "_N.xml");
+//                writeRDF(model_Wiki, RDF_Wiki_file + "_N.xml");
+                nodeslist.clear();
                 kvcontents = "";
                 kvcontents_En = "";
                 kvcontents_Zh = "";
@@ -162,28 +168,31 @@ public class RDF extends DefaultHandler {
         }
 
         if ("node".equals(curretntag) && "tag".equals(qName)) {
-            tagIF = 1;
             String kcontents = attributes.getValue("k");
             String vcontents = attributes.getValue("v");
-            if(plag == 0 || plag_Zh == 0 || plag_En == 0) {
+            if(plag == 0) {
                 kvcontents = kcontents + "-" + vcontents; //这是在没有name的情况下，记录下一个key及其value作为tag
                 if(kcontents.equals(XML_TAG_NAME)) { //提取出OSM实体node的name
                     plag = 1;
                     //kvcontentsN = kcontents + "=" + vcontents;
                     kvcontents = vcontents;
                 }
-                if(kcontents.equals(XML_TAG_NAME + ":zh")) { //提取出OSM实体node的中文名
-                    plag_Zh = 1;
-                    //kvcontentsN = kcontents + "=" + vcontents;
-                    kvcontents_Zh = vcontents;
-                }
-                if(kcontents.equals(XML_TAG_NAME + ":en")) {  //提取出OSM实体node的英文名
-                    plag_En = 1;
-                    //kvcontentsN = kcontents + "=" + vcontents;
-                    kvcontents_En = vcontents;
-                }
-            } else if(kcontents.equals("wikidata")) {
+            }
+            if(plag_Zh == 0 && kcontents.equals(XML_TAG_NAME + ":zh")) { //提取出OSM实体node的中文名
+                plag_Zh = 1;
+                //kvcontentsN = kcontents + "=" + vcontents;
+                kvcontents_Zh = vcontents;
+            }
+            if(plag_En == 0 && kcontents.equals(XML_TAG_NAME + ":en")) {  //提取出OSM实体node的英文名
+                plag_En = 1;
+                //kvcontentsN = kcontents + "=" + vcontents;
+                kvcontents_En = vcontents;
+            }
+            if(kcontents.equals("wikidata")) {
                 kvcontentsWiki = vcontents;
+            }
+            if(!(kvcontents == "" && kvcontents_Zh == "" && kvcontents_En == "") && kvcontentsWiki != "") {
+                tagIF = 1;
             }
         }
 
@@ -218,8 +227,8 @@ public class RDF extends DefaultHandler {
                     n.setLon(loncontents);
                     n.setLat(latcontents);
                     n.setTag(kvcontentsWiki);
-                    RDFNode_OSM(model_OSM, nodeslist, kvcontents, kvcontents_Zh, kvcontents_En, RDF_OSM_file + "_N.ttl");
-                    RDFNode_Wiki(model_Wiki, nodeslist, kvcontents, kvcontents_Zh, kvcontents_En, RDF_Wiki_file + "_N.ttl");
+                    model_OSM = RDFNode_OSM(model_OSM, nodeslist, kvcontents, kvcontents_Zh, kvcontents_En, RDF_OSM_file + "_N.xml");
+                    model_Wiki = RDFNode_Wiki(model_Wiki, nodeslist, kvcontents, kvcontents_Zh, kvcontents_En, RDF_Wiki_file + "_N.xml");
                 }
                 nodeslist.clear();;
                 kvcontents = "";
@@ -234,8 +243,12 @@ public class RDF extends DefaultHandler {
                 nodes = null;
                 tagIF = 0;
             }
+            if(saveNode == 0) {
+                writeRDF(model_OSM, RDF_OSM_file + "_N.xml");
+                writeRDF(model_Wiki, RDF_Wiki_file + "_N.xml");
+                saveNode = 1;
+            }
             //再对way进行操作
-            System.out.println("Nodes are done!");
             way = new Way();
             pointids = new Vector<String>();
             points = new Vector<Nodes>();
@@ -249,22 +262,29 @@ public class RDF extends DefaultHandler {
             tagIF = 1;
             String kcontents = attributes.getValue("k");
             String vcontents = attributes.getValue("v");
-            if(plag == 0 || plag_Zh == 0 || plag_En == 0) {
+            if(plag == 0) {
                 kvcontents = kcontents + "-" + vcontents; //这是在没有name的情况下，记录下一个key及其value作为tag
-                if(kcontents.equals(XML_TAG_NAME)) { //提取出OSM实体way的name
+                if(kcontents.equals(XML_TAG_NAME)) { //提取出OSM实体node的name
                     plag = 1;
+                    //kvcontentsN = kcontents + "=" + vcontents;
                     kvcontents = vcontents;
                 }
-                if(kcontents.equals(XML_TAG_NAME + ":zh")) { //提取出OSM实体way的中文名
-                    plag_Zh = 1;
-                    kvcontents_Zh = vcontents;
-                }
-                if(kcontents.equals(XML_TAG_NAME + ":en")) {  //提取出OSM实体way的英文名
-                    plag_En = 1;
-                    kvcontents_En = vcontents;
-                }
-            } else if(kcontents.equals("wikidata")) {
+            }
+            if(plag_Zh == 0 && kcontents.equals(XML_TAG_NAME + ":zh")) { //提取出OSM实体way的中文名
+                plag_Zh = 1;
+                //kvcontentsN = kcontents + "=" + vcontents;
+                kvcontents_Zh = vcontents;
+            }
+            if(plag_En == 0 && kcontents.equals(XML_TAG_NAME + ":en")) {  //提取出OSM实体way的英文名
+                plag_En = 1;
+                //kvcontentsN = kcontents + "=" + vcontents;
+                kvcontents_En = vcontents;
+            }
+            if(kcontents.equals("wikidata")) {
                 kvcontentsWiki = vcontents;
+            }
+            if(!(kvcontents == "" && kvcontents_Zh == "" && kvcontents_En == "") && kvcontentsWiki != "") {
+                tagIF = 1;
             }
         }
 
@@ -275,7 +295,11 @@ public class RDF extends DefaultHandler {
 
         //对relation操作
         if ("relation".equals(qName)) {
-            System.out.println("Ways are done!");
+            if(saveWay == 0) {
+                writeRDF(model_OSM, RDF_OSM_file + "_W.xml");
+                writeRDF(model_Wiki, RDF_Wiki_file + "_W.xml");
+                saveWay = 1;
+            }
             nodeIDs = new Vector<String>();
             wayIDs = new Vector<String>();
             relationIDs = new Vector<String>();
@@ -289,22 +313,29 @@ public class RDF extends DefaultHandler {
             tagIF = 1;
             String kcontents = attributes.getValue("k");
             String vcontents = attributes.getValue("v");
-            if(plag == 0 || plag_Zh == 0 || plag_En == 0) {
+            if(plag == 0) {
                 kvcontents = kcontents + "-" + vcontents; //这是在没有name的情况下，记录下一个key及其value作为tag
-                if(kcontents.equals(XML_TAG_NAME)) { //提取出OSM实体relation的name
+                if(kcontents.equals(XML_TAG_NAME)) { //提取出OSM实体node的name
                     plag = 1;
+                    //kvcontentsN = kcontents + "=" + vcontents;
                     kvcontents = vcontents;
                 }
-                if(kcontents.equals(XML_TAG_NAME + ":zh")) { //提取出OSM实体relation的中文名
-                    plag_Zh = 1;
-                    kvcontents_Zh = vcontents;
-                }
-                if(kcontents.equals(XML_TAG_NAME + ":en")) {  //提取出OSM实体relation的英文名
-                    plag_En = 1;
-                    kvcontents_En = vcontents;
-                }
-            } else if(kcontents.equals("wikidata")) {
+            }
+            if(plag_Zh == 0 && kcontents.equals(XML_TAG_NAME + ":zh")) { //提取出OSM实体relation的中文名
+                plag_Zh = 1;
+                //kvcontentsN = kcontents + "=" + vcontents;
+                kvcontents_Zh = vcontents;
+            }
+            if(plag_En == 0 && kcontents.equals(XML_TAG_NAME + ":en")) {  //提取出OSM实体relation的英文名
+                plag_En = 1;
+                //kvcontentsN = kcontents + "=" + vcontents;
+                kvcontents_En = vcontents;
+            }
+            if(kcontents.equals("wikidata")) {
                 kvcontentsWiki = vcontents;
+            }
+            if(!(kvcontents == "" && kvcontents_Zh == "" && kvcontents_En == "") && kvcontentsWiki != "") {
+                tagIF = 1;
             }
         }
 
@@ -338,8 +369,8 @@ public class RDF extends DefaultHandler {
                 System.out.print("Polyline");
             }
             System.out.println(way.getPointids());
-            RDFWay_OSM(model_OSM, way, kvcontents, kvcontents_Zh, kvcontents_En, RDF_OSM_file + "_W.ttl", NodePath);
-            RDFWay_Wiki(model_Wiki, way, kvcontents, kvcontents_Zh, kvcontents_En, RDF_OSM_file + "_W.ttl", NodePath);
+            model_OSM = RDFWay_OSM(model_OSM, way, kvcontents, kvcontents_Zh, kvcontents_En, RDF_OSM_file + "_W.xml", NodePath);
+            model_Wiki = RDFWay_Wiki(model_Wiki, way, kvcontents, kvcontents_Zh, kvcontents_En, RDF_OSM_file + "_W.xml", NodePath);
             kvcontents = "";
             curretntag = "";
             pointids = null;
@@ -362,8 +393,8 @@ public class RDF extends DefaultHandler {
             relation.setrelationIDs(relationIDs);
             System.out.println("Relation Id:" + relation.getId() + "\tName: " + kvcontents + "Zh " + kvcontents_Zh + "En " + kvcontents_En);
             System.out.println(relation.getnodeIDs() + ", " + relation.getwayIDs() + ", " + relation.getrelationIDs());
-            RDFRelation_OSM(model_OSM, relation, kvcontents, kvcontents_Zh, kvcontents_En, RDF_OSM_file + "_R.ttl", NodePath, WayPath, RelationPath);
-            RDFRelation_Wiki(model_Wiki, relation, kvcontents, kvcontents_Zh, kvcontents_En, RDF_OSM_file + "_R.ttl", NodePath, WayPath, RelationPath);
+            model_OSM = RDFRelation_OSM(model_OSM, relation, kvcontents, kvcontents_Zh, kvcontents_En, RDF_OSM_file + "_R.xml", NodePath, WayPath, RelationPath);
+            model_Wiki = RDFRelation_Wiki(model_Wiki, relation, kvcontents, kvcontents_Zh, kvcontents_En, RDF_OSM_file + "_R.xml", NodePath, WayPath, RelationPath);
             kvcontents = "";
             kvcontents_En = "";
             kvcontents_Zh = "";
@@ -405,8 +436,11 @@ public class RDF extends DefaultHandler {
             }
             relationlist.clear();
         }
+        writeRDF(model_OSM, RDF_OSM_file + "_R.xml");
+        writeRDF(model_Wiki, RDF_Wiki_file + "_R.xml");
     }
-    public static void RDFNode_OSM(Model model, List<Nodes> OSMlist, String Name, String Name_zh, String Name_en, String RDFfile) {
+    public static Model RDFNode_OSM(Model model, List<Nodes> OSMlist, String Name, String Name_zh, String Name_en, String RDFfile) {
+        Model rdfmodel = model;
         String entity = "node";
         OSM osm = new OSM();
         Nodes node = new Nodes();
@@ -434,8 +468,8 @@ public class RDF extends DefaultHandler {
             wiki.put("/wikidata/" + node.getTag(), t);
             osm.setSameAs(wiki);
             osm.setURI("http://openstreetmap.org/" + osm.getOSMType() + "/" + osm.getID());
-            String stype = String.valueOf(wiki.values().toArray()[0]);
-            String st = new String(stype.substring(1, stype.length()-1));
+//            String stype = String.valueOf(wiki.values().toArray()[0]);
+//            String st = new String(stype.substring(1, stype.length()-1));
             // and add the properties cascading style
             String wkt = osm.getWKT();
             try {
@@ -443,17 +477,17 @@ public class RDF extends DefaultHandler {
                 if (rdfFile.exists()) rdfFile.delete();
                 rdfFile.createNewFile();
                 if(osm.getWKT() != null) {
-                    if (osm.getName_en() != "") {
-                        rdf_osm = model.createResource(osm.getURI())
+                    if (Name_en != "" && Name_zh != "") {
+                        rdf_osm = rdfmodel.createResource(osm.getURI())
                                 .addProperty(OWL.sameAs,
-                                        model.createResource()
-                                                .addProperty(org.apache.jena.vocabulary.RDF.type, st)
-                                                .addProperty(VCARD.UID, String.valueOf(wiki.keySet().toArray()[0]))
+                                        rdfmodel.createResource("http://www.wikidata.org/wiki/" + node.getTag())
+                                                .addProperty(org.apache.jena.vocabulary.RDF.type, "WikidataEntity")
+                                                .addProperty(VCARD.UID, "/wikidata/" + node.getTag())
                                 )
                                 .addProperty(VCARD.NAME,
-                                        model.createResource()
-                                                .addProperty(RDFS.label, model.createLiteral(osm.getName_en(), "en"))
-                                                .addProperty(RDFS.label, model.createLiteral(osm.getName_zh(), "zh"))
+                                        rdfmodel.createResource()
+                                                .addProperty(RDFS.label, rdfmodel.createLiteral(Name_en, "en"))
+                                                .addProperty(RDFS.label, rdfmodel.createLiteral(Name_zh, "zh"))
                                 )
                                 .addProperty(VCARD.GEO, wkt)
                                 .addProperty(VCARD.CLASS, osm.getType().get(1))
@@ -462,11 +496,11 @@ public class RDF extends DefaultHandler {
                                 .addProperty(VCARD.UID, osm.getIDType() + "/" + osm.getID())
                         ;
                     } else {
-                        rdf_osm = model.createResource(osm.getURI())
+                        rdf_osm = rdfmodel.createResource(osm.getURI())
                                 .addProperty(OWL.sameAs,
-                                        model.createResource()
-                                                .addProperty(org.apache.jena.vocabulary.RDF.type, st)
-                                                .addProperty(VCARD.UID, String.valueOf(wiki.keySet().toArray()[0]))
+                                        rdfmodel.createResource("http://www.wikidata.org/wiki/" + node.getTag())
+                                                .addProperty(org.apache.jena.vocabulary.RDF.type, "WikidataEntity")
+                                                .addProperty(VCARD.UID, "/wikidata/" + node.getTag())
                                 )
                                 .addProperty(VCARD.NAME, osm.getName_zh())
                                 .addProperty(VCARD.GEO, wkt)
@@ -477,18 +511,22 @@ public class RDF extends DefaultHandler {
                         ;
                     }
                 }
-                model.write(System.out, "RDF/XML-ABBREV");
-                FileWriter out = new FileWriter(RDFfile);
-                model.write( out, "RDF/XML-ABBREV" );
+//                model.write(System.out, "RDF/XML-ABBREV");
+//                FileWriter out = new FileWriter(RDFfile);
+//                model.write( out, "RDF/XML-ABBREV" );
             } catch (FileNotFoundException e1) {
                 e1.printStackTrace();
             } catch (IOException e1) {
                 e1.printStackTrace();
             }
         }
+        osm = null;
+        node = null;
+        return rdfmodel;
     }
-    public static void RDFWay_OSM(Model model, Way way, String Name, String Name_zh, String Name_en, String RDFfile, String nodePath) {
-        String entity = "node";
+    public static Model RDFWay_OSM(Model model, Way way, String Name, String Name_zh, String Name_en, String RDFfile, String nodePath) {
+        Model rdfmodel = model;
+        String entity = "way";
         OSM osm = new OSM();
         osm.setWKT(OSM2WKT.way2WKT(way, nodePath));
         osm.setIDType("osm");
@@ -522,17 +560,17 @@ public class RDF extends DefaultHandler {
             if (rdfFile.exists()) rdfFile.delete();
             rdfFile.createNewFile();
             if(osm.getWKT() != null) {
-                if (osm.getName_en() != "") {
-                    rdf_osm = model.createResource(osm.getURI())
+                if (Name_en != "" && Name_zh != "") {
+                    rdf_osm = rdfmodel.createResource(osm.getURI())
                             .addProperty(OWL.sameAs,
-                                    model.createResource()
-                                            .addProperty(org.apache.jena.vocabulary.RDF.type, st)
-                                            .addProperty(VCARD.UID, String.valueOf(wiki.keySet().toArray()[0]))
+                                    rdfmodel.createResource("http://www.wikidata.org/wiki/" + way.getTag())
+                                            .addProperty(org.apache.jena.vocabulary.RDF.type, "WikidataEntity")
+                                            .addProperty(VCARD.UID, "/wikidata/" + way.getTag())
                             )
                             .addProperty(VCARD.NAME,
-                                    model.createResource()
-                                            .addProperty(RDFS.label, model.createLiteral(osm.getName_en(), "en"))
-                                            .addProperty(RDFS.label, model.createLiteral(osm.getName_zh(), "zh"))
+                                    rdfmodel.createResource()
+                                            .addProperty(RDFS.label, rdfmodel.createLiteral(Name_en, "en"))
+                                            .addProperty(RDFS.label, rdfmodel.createLiteral(Name_zh, "zh"))
                             )
                             .addProperty(VCARD.GEO, wkt)
                             .addProperty(VCARD.CLASS, osm.getType().get(1))
@@ -541,11 +579,11 @@ public class RDF extends DefaultHandler {
                             .addProperty(VCARD.UID, osm.getIDType() + "/" + osm.getID())
                     ;
                 } else {
-                    rdf_osm = model.createResource(osm.getURI())
+                    rdf_osm = rdfmodel.createResource(osm.getURI())
                             .addProperty(OWL.sameAs,
-                                    model.createResource()
-                                            .addProperty(org.apache.jena.vocabulary.RDF.type, st)
-                                            .addProperty(VCARD.UID, String.valueOf(wiki.keySet().toArray()[0]))
+                                    rdfmodel.createResource("http://www.wikidata.org/wiki/" + way.getTag())
+                                            .addProperty(org.apache.jena.vocabulary.RDF.type, "WikidataEntity")
+                                            .addProperty(VCARD.UID, "/wikidata/" + way.getTag())
                             )
                             .addProperty(VCARD.NAME, osm.getName_zh())
                             .addProperty(VCARD.GEO, wkt)
@@ -556,16 +594,18 @@ public class RDF extends DefaultHandler {
                     ;
                 }
             }
-            model.write(System.out, "RDF/XML-ABBREV");
-            FileWriter out = new FileWriter(RDFfile);
-            model.write( out, "RDF/XML-ABBREV" );
+//            model.write(System.out, "RDF/XML-ABBREV");
+//            FileWriter out = new FileWriter(RDFfile);
+//            model.write( out, "RDF/XML-ABBREV" );
         } catch (FileNotFoundException e1) {
             e1.printStackTrace();
         } catch (IOException e1) {
             e1.printStackTrace();
         }
+        return rdfmodel;
     }
-    public static void RDFRelation_OSM(Model model, Relations relation, String Name, String Name_zh, String Name_en, String RDFfile, String nodePath, String wayPath, String relationPath) {
+    public static Model RDFRelation_OSM(Model model, Relations relation, String Name, String Name_zh, String Name_en, String RDFfile, String nodePath, String wayPath, String relationPath) {
+        Model rdfmodel = model;
         String entity = "relation";
         OSM osm = new OSM();
         osm.setWKT(OSM2WKT.relation2WKT(relation, nodePath, wayPath, relationPath));
@@ -589,8 +629,8 @@ public class RDF extends DefaultHandler {
         wiki.put("/wikidata/" + relation.getTag(), t);
         osm.setSameAs(wiki);
         osm.setURI("http://openstreetmap.org/" + osm.getOSMType() + "/" + osm.getID());
-        String stype = String.valueOf(wiki.values().toArray()[0]);
-        String st = new String(stype.substring(1, stype.length()-1));
+//        String stype = String.valueOf(wiki.values().toArray()[0]);
+//        String st = new String(stype.substring(1, stype.length()-1));
         // and add the properties cascading style
         String wkt = osm.getWKT();
         // create the resource
@@ -600,17 +640,17 @@ public class RDF extends DefaultHandler {
             if (rdfFile.exists()) rdfFile.delete();
             rdfFile.createNewFile();
             if(osm.getWKT() != null) {
-                if (osm.getName_en() != "") {
-                    rdf_osm = model.createResource(osm.getURI())
+                if (Name_en != "" && Name_zh != "") {
+                    rdf_osm = rdfmodel.createResource(osm.getURI())
                             .addProperty(OWL.sameAs,
-                                    model.createResource()
-                                            .addProperty(org.apache.jena.vocabulary.RDF.type, st)
-                                            .addProperty(VCARD.UID, String.valueOf(wiki.keySet().toArray()[0]))
+                                    rdfmodel.createResource("http://www.wikidata.org/wiki/" + relation.getTag())
+                                            .addProperty(org.apache.jena.vocabulary.RDF.type, "WikidataEntity")
+                                            .addProperty(VCARD.UID, "/wikidata/" + relation.getTag())
                             )
                             .addProperty(VCARD.NAME,
-                                    model.createResource()
-                                            .addProperty(RDFS.label, model.createLiteral(osm.getName_en(), "en"))
-                                            .addProperty(RDFS.label, model.createLiteral(osm.getName_zh(), "zh"))
+                                    rdfmodel.createResource()
+                                            .addProperty(RDFS.label, rdfmodel.createLiteral(Name_en, "en"))
+                                            .addProperty(RDFS.label, rdfmodel.createLiteral(Name_zh, "zh"))
                             )
                             .addProperty(VCARD.GEO, wkt)
                             .addProperty(VCARD.CLASS, osm.getType().get(1))
@@ -619,11 +659,11 @@ public class RDF extends DefaultHandler {
                             .addProperty(VCARD.UID, osm.getIDType() + "/" + osm.getID())
                     ;
                 } else {
-                    rdf_osm = model.createResource(osm.getURI())
+                    rdf_osm = rdfmodel.createResource(osm.getURI())
                             .addProperty(OWL.sameAs,
-                                    model.createResource()
-                                            .addProperty(org.apache.jena.vocabulary.RDF.type, st)
-                                            .addProperty(VCARD.UID, String.valueOf(wiki.keySet().toArray()[0]))
+                                    rdfmodel.createResource("http://www.wikidata.org/wiki/" + relation.getTag())
+                                            .addProperty(org.apache.jena.vocabulary.RDF.type, "WikidataEntity")
+                                            .addProperty(VCARD.UID, "/wikidata/" + relation.getTag())
                             )
                             .addProperty(VCARD.NAME, osm.getName_zh())
                             .addProperty(VCARD.GEO, wkt)
@@ -634,16 +674,18 @@ public class RDF extends DefaultHandler {
                     ;
                 }
             }
-            model.write(System.out, "RDF/XML-ABBREV");
-            FileWriter out = new FileWriter(RDFfile);
-            model.write( out, "RDF/XML-ABBREV" );
+//            model.write(System.out, "RDF/XML-ABBREV");
+//            FileWriter out = new FileWriter(RDFfile);
+//            model.write( out, "RDF/XML-ABBREV" );
         } catch (FileNotFoundException e1) {
             e1.printStackTrace();
         } catch (IOException e1) {
             e1.printStackTrace();
         }
+        return rdfmodel;
     }
-    public static void RDFNode_Wiki(Model model, List<Nodes> OSMlist, String Name, String Name_zh, String Name_en, String RDFfile) {
+    public static Model RDFNode_Wiki(Model model, List<Nodes> OSMlist, String Name, String Name_zh, String Name_en, String RDFfile) {
+        Model rdfmodel = model;
         String entity = "node";
         Wikidata wiki = new Wikidata();
         Nodes node = new Nodes();
@@ -678,36 +720,36 @@ public class RDF extends DefaultHandler {
                 // create the resource and add the properties cascading style
                 String wkt = wiki.getWKT();
                 if (wiki.getWKT() != null) {
-                    if (wiki.getName_en() != "") {
-                        String stype = osm.values().toString();
-                        String stype1 = new String(stype.substring(2, stype.indexOf(",")));
-                        String stype2 = new String(stype.substring(stype.indexOf(",") + 2, stype.length() - 2));
-                        rdf_wiki = model.createResource(wiki.getURI())
+                    if (Name_en != "" && Name_zh != "") {
+//                        String stype = osm.values().toString();
+//                        String stype1 = new String(stype.substring(2, stype.indexOf(",")));
+//                        String stype2 = new String(stype.substring(stype.indexOf(",") + 2, stype.length() - 2));
+                        rdf_wiki = rdfmodel.createResource(wiki.getURI())
                                 .addProperty(OWL.sameAs,
-                                        model.createResource()
-                                                .addProperty(VCARD.CLASS, stype2)
-                                                .addProperty(RDFS.subClassOf, stype1)
-                                                .addProperty(VCARD.UID, String.valueOf(osm.keySet().toArray()[0]))
+                                        rdfmodel.createResource("http://openstreetmap.org/" + entity + "/" + node.getId())
+                                                .addProperty(VCARD.CLASS, "OSM" + toUpperCaseFirstOne(entity))
+                                                .addProperty(RDFS.subClassOf, "OSMEntity")
+                                                .addProperty(VCARD.UID, "/osm/" + entity + "/" + node.getId())
                                 )
                                 .addProperty(VCARD.NAME,
-                                        model.createResource()
-                                                .addProperty(RDFS.label, model.createLiteral(wiki.getName_en(), "en"))
-                                                .addProperty(RDFS.label, model.createLiteral(wiki.getName_zh(), "zh"))
+                                        rdfmodel.createResource()
+                                                .addProperty(RDFS.label, rdfmodel.createLiteral(Name_en, "en"))
+                                                .addProperty(RDFS.label, rdfmodel.createLiteral(Name_zh, "zh"))
                                 )
                                 .addProperty(VCARD.GEO, wkt)
                                 .addProperty(org.apache.jena.vocabulary.RDF.type, wiki.getType().get(0))
                                 .addProperty(VCARD.UID, wiki.getIDType() + "/" + wiki.getID())
                         ;
                     } else {
-                        String stype = osm.values().toString();
-                        String stype1 = new String(stype.substring(2, stype.indexOf(",")));
-                        String stype2 = new String(stype.substring(stype.indexOf(",") + 2, stype.length() - 2));
-                        rdf_wiki = model.createResource(wiki.getURI())
+//                        String stype = osm.values().toString();
+//                        String stype1 = new String(stype.substring(2, stype.indexOf(",")));
+//                        String stype2 = new String(stype.substring(stype.indexOf(",") + 2, stype.length() - 2));
+                        rdf_wiki = rdfmodel.createResource(wiki.getURI())
                                 .addProperty(OWL.sameAs,
-                                        model.createResource()
-                                                .addProperty(VCARD.CLASS, stype2)
-                                                .addProperty(RDFS.subClassOf, stype1)
-                                                .addProperty(VCARD.UID, String.valueOf(osm.keySet().toArray()[0]))
+                                        rdfmodel.createResource("http://openstreetmap.org/" + entity + "/" + node.getId())
+                                                .addProperty(VCARD.CLASS, "OSM" + toUpperCaseFirstOne(entity))
+                                                .addProperty(RDFS.subClassOf, "OSMEntity")
+                                                .addProperty(VCARD.UID, "/osm/" + entity + "/" + node.getId())
                                 )
                                 .addProperty(VCARD.NAME, wiki.getName_zh())
                                 .addProperty(VCARD.GEO, wkt)
@@ -716,18 +758,20 @@ public class RDF extends DefaultHandler {
                         ;
                     }
                 }
-                // now write the model in XML form to a file
-                model.write(System.out, "RDF/XML-ABBREV");
-                FileWriter out = new FileWriter(RDFfile);
-                model.write(out, "RDF/XML-ABBREV");
+//                // now write the model in XML form to a file
+//                model.write(System.out, "RDF/XML-ABBREV");
+//                FileWriter out = new FileWriter(RDFfile);
+//                model.write(out, "RDF/XML-ABBREV");
             } catch (FileNotFoundException e1) {
                 e1.printStackTrace();
             } catch (IOException e1) {
                 e1.printStackTrace();
             }
         }
+        return rdfmodel;
     }
-    public static void RDFWay_Wiki(Model model, Way way, String Name, String Name_zh, String Name_en, String RDFfile, String nodePath) {
+    public static Model RDFWay_Wiki(Model model, Way way, String Name, String Name_zh, String Name_en, String RDFfile, String nodePath) {
+        Model rdfmodel = model;
         String entity = "way";
         Wikidata wiki = new Wikidata();
         // create the resource
@@ -759,36 +803,36 @@ public class RDF extends DefaultHandler {
             // create the resource and add the properties cascading style
             String wkt = wiki.getWKT();
             if (wiki.getWKT() != null) {
-                if (wiki.getName_en() != "") {
-                    String stype = osm.values().toString();
-                    String stype1 = new String(stype.substring(2, stype.indexOf(",")));
-                    String stype2 = new String(stype.substring(stype.indexOf(",") + 2, stype.length() - 2));
-                    rdf_wiki = model.createResource(wiki.getURI())
+                if (Name_en != "" && Name_zh != "") {
+//                    String stype = osm.values().toString();
+//                    String stype1 = new String(stype.substring(2, stype.indexOf(",")));
+//                    String stype2 = new String(stype.substring(stype.indexOf(",") + 2, stype.length() - 2));
+                    rdf_wiki = rdfmodel.createResource(wiki.getURI())
                             .addProperty(OWL.sameAs,
-                                    model.createResource()
-                                            .addProperty(VCARD.CLASS, stype2)
-                                            .addProperty(RDFS.subClassOf, stype1)
-                                            .addProperty(VCARD.UID, String.valueOf(osm.keySet().toArray()[0]))
+                                    rdfmodel.createResource("http://openstreetmap.org/" + entity + "/" + way.getId())
+                                            .addProperty(VCARD.CLASS, "OSM" + toUpperCaseFirstOne(entity))
+                                            .addProperty(RDFS.subClassOf, "OSMEntity")
+                                            .addProperty(VCARD.UID, "/osm/" + entity + "/" + way.getId())
                             )
                             .addProperty(VCARD.NAME,
-                                    model.createResource()
-                                            .addProperty(RDFS.label, model.createLiteral(wiki.getName_en(), "en"))
-                                            .addProperty(RDFS.label, model.createLiteral(wiki.getName_zh(), "zh"))
+                                    rdfmodel.createResource()
+                                            .addProperty(RDFS.label, rdfmodel.createLiteral(Name_en, "en"))
+                                            .addProperty(RDFS.label, rdfmodel.createLiteral(Name_zh, "zh"))
                             )
                             .addProperty(VCARD.GEO, wkt)
                             .addProperty(org.apache.jena.vocabulary.RDF.type, wiki.getType().get(0))
                             .addProperty(VCARD.UID, wiki.getIDType() + "/" + wiki.getID())
                     ;
                 } else {
-                    String stype = osm.values().toString();
-                    String stype1 = new String(stype.substring(2, stype.indexOf(",")));
-                    String stype2 = new String(stype.substring(stype.indexOf(",") + 2, stype.length() - 2));
-                    rdf_wiki = model.createResource(wiki.getURI())
+//                    String stype = osm.values().toString();
+//                    String stype1 = new String(stype.substring(2, stype.indexOf(",")));
+//                    String stype2 = new String(stype.substring(stype.indexOf(",") + 2, stype.length() - 2));
+                    rdf_wiki = rdfmodel.createResource(wiki.getURI())
                             .addProperty(OWL.sameAs,
-                                    model.createResource()
-                                            .addProperty(VCARD.CLASS, stype2)
-                                            .addProperty(RDFS.subClassOf, stype1)
-                                            .addProperty(VCARD.UID, String.valueOf(osm.keySet().toArray()[0]))
+                                    rdfmodel.createResource("http://openstreetmap.org/" + entity + "/" + way.getId())
+                                            .addProperty(VCARD.CLASS, "OSM" + toUpperCaseFirstOne(entity))
+                                            .addProperty(RDFS.subClassOf, "OSMEntity")
+                                            .addProperty(VCARD.UID, "/osm/" + entity + "/" + way.getId())
                             )
                             .addProperty(VCARD.NAME, wiki.getName_zh())
                             .addProperty(VCARD.GEO, wkt)
@@ -797,17 +841,19 @@ public class RDF extends DefaultHandler {
                     ;
                 }
             }
-            // now write the model in XML form to a file
-            model.write(System.out, "RDF/XML-ABBREV");
-            FileWriter out = new FileWriter(RDFfile);
-            model.write(out, "RDF/XML-ABBREV");
+//            // now write the model in XML form to a file
+//            model.write(System.out, "RDF/XML-ABBREV");
+//            FileWriter out = new FileWriter(RDFfile);
+//            model.write(out, "RDF/XML-ABBREV");
         } catch (FileNotFoundException e1) {
             e1.printStackTrace();
         } catch (IOException e1) {
             e1.printStackTrace();
         }
+        return rdfmodel;
     }
-    public static void RDFRelation_Wiki(Model model, Relations relation, String Name, String Name_zh, String Name_en, String RDFfile, String nodePath, String wayPath, String relationPath) {
+    public static Model RDFRelation_Wiki(Model model, Relations relation, String Name, String Name_zh, String Name_en, String RDFfile, String nodePath, String wayPath, String relationPath) {
+        Model rdfmodel = model;
         String entity = "relation";
         Wikidata wiki = new Wikidata();
         // create the resource
@@ -839,36 +885,36 @@ public class RDF extends DefaultHandler {
             // create the resource and add the properties cascading style
             String wkt = wiki.getWKT();
             if (wiki.getWKT() != null) {
-                if (wiki.getName_en() != "") {
-                    String stype = osm.values().toString();
-                    String stype1 = new String(stype.substring(2, stype.indexOf(",")));
-                    String stype2 = new String(stype.substring(stype.indexOf(",") + 2, stype.length() - 2));
-                    rdf_wiki = model.createResource(wiki.getURI())
+                if (Name_en != "" && Name_zh != "") {
+//                    String stype = osm.values().toString();
+//                    String stype1 = new String(stype.substring(2, stype.indexOf(",")));
+//                    String stype2 = new String(stype.substring(stype.indexOf(",") + 2, stype.length() - 2));
+                    rdf_wiki = rdfmodel.createResource(wiki.getURI())
                             .addProperty(OWL.sameAs,
-                                    model.createResource()
-                                            .addProperty(VCARD.CLASS, stype2)
-                                            .addProperty(RDFS.subClassOf, stype1)
-                                            .addProperty(VCARD.UID, String.valueOf(osm.keySet().toArray()[0]))
+                                    rdfmodel.createResource("http://openstreetmap.org/" + entity + "/" + relation.getId())
+                                            .addProperty(VCARD.CLASS, "OSM" + toUpperCaseFirstOne(entity))
+                                            .addProperty(RDFS.subClassOf, "OSMEntity")
+                                            .addProperty(VCARD.UID, "/osm/" + entity + "/" + relation.getId())
                             )
                             .addProperty(VCARD.NAME,
-                                    model.createResource()
-                                            .addProperty(RDFS.label, model.createLiteral(wiki.getName_en(), "en"))
-                                            .addProperty(RDFS.label, model.createLiteral(wiki.getName_zh(), "zh"))
+                                    rdfmodel.createResource()
+                                            .addProperty(RDFS.label, rdfmodel.createLiteral(Name_en, "en"))
+                                            .addProperty(RDFS.label, rdfmodel.createLiteral(Name_zh, "zh"))
                             )
                             .addProperty(VCARD.GEO, wkt)
                             .addProperty(org.apache.jena.vocabulary.RDF.type, wiki.getType().get(0))
                             .addProperty(VCARD.UID, wiki.getIDType() + "/" + wiki.getID())
                     ;
                 } else {
-                    String stype = osm.values().toString();
-                    String stype1 = new String(stype.substring(2, stype.indexOf(",")));
-                    String stype2 = new String(stype.substring(stype.indexOf(",") + 2, stype.length() - 2));
-                    rdf_wiki = model.createResource(wiki.getURI())
+//                    String stype = osm.values().toString();
+//                    String stype1 = new String(stype.substring(2, stype.indexOf(",")));
+//                    String stype2 = new String(stype.substring(stype.indexOf(",") + 2, stype.length() - 2));
+                    rdf_wiki = rdfmodel.createResource(wiki.getURI())
                             .addProperty(OWL.sameAs,
-                                    model.createResource()
-                                            .addProperty(VCARD.CLASS, stype2)
-                                            .addProperty(RDFS.subClassOf, stype1)
-                                            .addProperty(VCARD.UID, String.valueOf(osm.keySet().toArray()[0]))
+                                    rdfmodel.createResource("http://openstreetmap.org/" + entity + "/" + relation.getId())
+                                            .addProperty(VCARD.CLASS, "OSM" + toUpperCaseFirstOne(entity))
+                                            .addProperty(RDFS.subClassOf, "OSMEntity")
+                                            .addProperty(VCARD.UID, "/osm/" + entity + "/" + relation.getId())
                             )
                             .addProperty(VCARD.NAME, wiki.getName_zh())
                             .addProperty(VCARD.GEO, wkt)
@@ -877,15 +923,16 @@ public class RDF extends DefaultHandler {
                     ;
                 }
             }
-            // now write the model in XML form to a file
-            model.write(System.out, "RDF/XML-ABBREV");
-            FileWriter out = new FileWriter(RDFfile);
-            model.write(out, "RDF/XML-ABBREV");
+//            // now write the model in XML form to a file
+//            model.write(System.out, "RDF/XML-ABBREV");
+//            FileWriter out = new FileWriter(RDFfile);
+//            model.write(out, "RDF/XML-ABBREV");
         } catch (FileNotFoundException e1) {
             e1.printStackTrace();
         } catch (IOException e1) {
             e1.printStackTrace();
         }
+        return rdfmodel;
     }
 
     public boolean readOSM(String filePath) {
@@ -945,12 +992,31 @@ public class RDF extends DefaultHandler {
         model.write(System.out);
     }
 
+    public static void writeRDF(Model model, String RDFfile) {
+//        File rdfFile = new File(RDFfile);
+//        if (rdfFile.exists()) rdfFile.delete();
+//        try {
+//            rdfFile.createNewFile();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+        //model.write(System.out, "RDF/XML-ABBREV");
+        FileWriter out = null;
+        try {
+            out = new FileWriter(RDFfile);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        model.write( out, "RDF/XML-ABBREV" );
+    }
+
     public static void main(String args[]) {
         String OSMFilePath_Taiwan = "F:\\OSMwithWiki_Taiwan.osm";
         String OSMFilePath_China = "F:\\OSMwithWiki_China.osm";
         RDF rdf = new RDF();
-//        rdf.readOSM(OSMFilePath_China);
-//        rdf.readOSM(OSMFilePath_Taiwan);
+        //rdf.readOSM(OSMFilePath_Taiwan);
+        rdf.readOSM(OSMFilePath_China);
+
 //        readRDF("F:\\RDF_Wiki_Taiwan.ttl");
     }
 }
