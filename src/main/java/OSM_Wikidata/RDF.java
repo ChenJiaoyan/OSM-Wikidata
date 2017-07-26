@@ -81,21 +81,23 @@ public class RDF extends DefaultHandler {
     private Integer saveNode = 0;
     private Integer saveWay = 0;
 
+    private String rootPath = "F:/SmallApple/OSM-Wikidata_data/Result/";
+
 /*
     //运行中国台湾的数据时
-    String RDF_OSM_file = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\RDF_OSM_Taiwan";
-    String RDF_Wiki_file = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\RDF_Wiki_Taiwan";
-    String NodePath = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\NodePath_Taiwan.txt";
-    String WayPath = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\WayPath_Taiwan.txt";
-    String RelationPath = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\RelationPath_Taiwan.txt";
+    String RDF_OSM_file = rootPath + "RDF_OSM_Taiwan";
+    String RDF_Wiki_file = rootPath + "1055534595RDF_Wiki_Taiwan";
+    String NodePath = rootPath + "NodePath_Taiwan.txt";
+    String WayPath = rootPath + "WayPath_Taiwan.txt";
+    String RelationPath = rootPath + "RelationPath_Taiwan.txt";
 */
 
     //运行中国的数据时
-    String RDF_OSM_file = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\RDF_OSM_China";
-    String RDF_Wiki_file = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\RDF_Wiki_China";
-    String NodePath = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\NodePath_China.txt";
-    String WayPath = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\WayPath_China.txt";
-    String RelationPath = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\RelationPath_China.txt";
+    String RDF_OSM_file = rootPath + "RDF_OSM_China";
+    String RDF_Wiki_file = rootPath + "RDF_Wiki_China";
+    String NodePath = rootPath + "NodePath_China.txt";
+    String WayPath = rootPath + "WayPath_China.txt";
+    String RelationPath = rootPath + "RelationPath_China.txt";
     
     // create an empty model
     private Model model_OSM = ModelFactory.createDefaultModel();
@@ -998,8 +1000,9 @@ public class RDF extends DefaultHandler {
     }
 
     public static void main(String args[]) {
-        String OSMFilePath_Taiwan = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\OSMwithWiki_Taiwan.osm";
-        String OSMFilePath_China = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\OSMwithWiki_China.osm";
+        String rootPath = "F:/SmallApple/OSM-Wikidata_data/Result/";
+        String OSMFilePath_Taiwan = rootPath + "OSMwithWiki_Taiwan.osm";
+        String OSMFilePath_China = rootPath + "OSMwithWiki_China.osm";
         RDF rdf = new RDF();
         //rdf.readOSM(OSMFilePath_Taiwan);
         rdf.readOSM(OSMFilePath_China);
