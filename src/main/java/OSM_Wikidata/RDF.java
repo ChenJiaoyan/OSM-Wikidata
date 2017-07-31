@@ -1,5 +1,6 @@
 package OSM_Wikidata;
 
+import oracle.spatial.geometry.JGeometry;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Resource;
@@ -20,6 +21,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Vector;
+
+import oracle.spatial.util.*;
+
 
 import static OSM_Wikidata.OSM2WKT.polygonOrPolyline;
 import static OSM_Wikidata.OSM_Wikidata.toUpperCaseFirstOne;
@@ -82,6 +86,8 @@ public class RDF extends DefaultHandler {
     private Integer saveWay = 0;
 
     private String rootPath = "F:/SmallApple/OSM-Wikidata_data/Result/";
+    //ForServer
+    //private String rootPath = "/home/dsm/OSM-Wikidata/Result_the end/";
 
 /*
     //运行中国台湾的数据时
@@ -990,23 +996,80 @@ public class RDF extends DefaultHandler {
 //            e.printStackTrace();
 //        }
         //model.write(System.out, "RDF/XML-ABBREV");
+
         FileWriter out = null;
         try {
             out = new FileWriter(RDFfile);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        model.write( out, "RDF/XML-ABBREV" );
+        model.write(out, "RDF/XML-ABBREV");
+    }
+
+    public static void writeSelectedRDF(Model model, String RDFfile, String format) {
+        // 这个函数是传入model，根据选择的输出format，生成RDFfile
+//        File rdfFile = new File(RDFfile);
+//        if (rdfFile.exists()) rdfFile.delete();
+//        try {
+//            rdfFile.createNewFile();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+        //model.write(System.out, "RDF/XML-ABBREV");
+
+        try {
+            File file = new File(RDFfile);
+            Writer out = new BufferedWriter( new OutputStreamWriter( new FileOutputStream(file), "UTF-8"));
+            model.write(out, format);
+            out.flush();
+            out.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static Model readRDF2model (String inputFileName) {
+        // 这个函数是传入rdf文件，得到model
+        // create an empty model
+        Model model = ModelFactory.createDefaultModel();
+
+        // use the FileManager to find the input file
+        InputStream in = FileManager.get().open(inputFileName);
+        if (in == null) {
+            throw new IllegalArgumentException(
+                    "File: " + inputFileName + " not found");
+        }
+
+        // read the RDF/XML file
+        model.read(in, null);
+
+        return model;
     }
 
     public static void main(String args[]) {
         String rootPath = "F:/SmallApple/OSM-Wikidata_data/Result/";
+        //ForServer
+        //String rootPath = "/home/dsm/OSM-Wikidata/Result";
         String OSMFilePath_Taiwan = rootPath + "OSMwithWiki_Taiwan.osm";
         String OSMFilePath_China = rootPath + "OSMwithWiki_China.osm";
         RDF rdf = new RDF();
         //rdf.readOSM(OSMFilePath_Taiwan);
-        rdf.readOSM(OSMFilePath_China);
+        //rdf.readOSM(OSMFilePath_China);
+        String rootPath2 = "/home/dsm/OSM-Wikidata/Result_the end/";
+        String format = "Turtle";
+        String suffix = ".ttl";
+        String rdfOSMFile_Taiwan = rootPath2 + "RDF_OSM_Taiwan(node&&way).xml";
+        String rdfOSMFile_China = rootPath2 + "RDF_OSM_China(node).xml";
+        String rdfOSMFile_ChinaALL = rootPath2 + "RDF_OSM_ChinaALL" + suffix;
+        Model model_OSM = rdf.readRDF2model(rdfOSMFile_Taiwan).union(readRDF2model(rdfOSMFile_China));
+        writeSelectedRDF(model_OSM, rdfOSMFile_ChinaALL, format);
+        writeSelectedRDF(model_OSM, rootPath2 + "RDF_OSM_ChinaALL.xml", "RDF/XML-ABBREV");
 
-//        readRDF("F:\\RDF_Wiki_Taiwan.ttl");
+        String rdfWikiFile_Taiwan = rootPath2 + "RDF_Wiki_Taiwan(node&&way).xml";
+        String rdfWikiFile_China = rootPath2 + "RDF_Wiki_China(node).xml";
+        String rdfWikiFile_ChinaALL = rootPath2 + "RDF_Wiki_ChinaALL" + suffix;
+        Model model_Wiki = rdf.readRDF2model(rdfWikiFile_Taiwan).union(readRDF2model(rdfWikiFile_China));
+        writeSelectedRDF(model_Wiki, rdfWikiFile_ChinaALL, format);
+        writeSelectedRDF(model_Wiki, rootPath2 + "RDF_Wiki_ChinaALL.xml", "RDF/XML-ABBREV");
     }
 }
