@@ -12,11 +12,13 @@ public class OSM_Wikidata {
     static ArrayList<String> Type = null;
     static String ID = null;
     static String IDType = null;
+    static String Label = null;
     static String Name_zh = null;
     static String Name_en = null;
     static String WKT = null;
     static String URI = null;
-    static HashMap<String, ArrayList<String>> SameAs = null;
+    //static HashMap<String, ArrayList<String>> SameAs = null;
+    static String SameAs = null;
 
     public void setID(String ID) {
         this.ID = ID;
@@ -28,6 +30,10 @@ public class OSM_Wikidata {
 
     public void setType(ArrayList type) {
         Type = type;
+    }
+
+    public void setLabel(String label) {
+        Label = label;
     }
 
     public void setName_zh(String name_zh) {
@@ -46,7 +52,12 @@ public class OSM_Wikidata {
         this.WKT = WKT;
     }
 
+    /*
     public void setSameAs(HashMap<String, ArrayList<String>> SameAs) {
+        this.SameAs = SameAs;
+    }
+    */
+    public void setSameAs(String SameAs) {
         this.SameAs = SameAs;
     }
 
@@ -66,6 +77,10 @@ public class OSM_Wikidata {
         return Type;
     }
 
+    public static String getLabel() {
+        return Label;
+    }
+
     public static String getName_zh() {
         return Name_zh;
     }
@@ -82,7 +97,12 @@ public class OSM_Wikidata {
         return WKT;
     }
 
+    /*
     public static HashMap<String, ArrayList<String>> getSameAs() {
+        return SameAs;
+    }
+    */
+    public static String getSameAs() {
         return SameAs;
     }
 
@@ -112,19 +132,21 @@ public class OSM_Wikidata {
                 "\r\t]";
         String wkt = "\"asWKT\": \"" + getWKT() + "\"";
         String uri = "\"uri\": " + getURI();
+        /*
         String s1 = getSameAs().keySet().toString();
         String s2 = new String(s1.substring(1, s1.length()-1));
         String same = "\"sameAs\": {\n" +
                 "\r\n\r\t\r\t\"@id\": \"" + s2 +  "\",\r\n" +
                 "\r\t\r\t\"@type\": " + getSameAs().get(s2) +  ",\r\n" +
                 "\r\t}";
+        */
         rdf.add(context);
         rdf.add(id);
         rdf.add(type);
         rdf.add(name);
         rdf.add(wkt);
         rdf.add(uri);
-        rdf.add(same);
+        //rdf.add(same);
         return rdf;
     }
 }

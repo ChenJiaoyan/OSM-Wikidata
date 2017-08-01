@@ -14,21 +14,14 @@ import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 import java.io.*;
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Vector;
+import OSM.*;
 
 public class OSM2WKT extends DefaultHandler {
 
-    private final static String XML_TAG_OSM = "osm";
-    private final static String XML_TAG_NODE = "node";
-    private final static String XML_TAG_ID = "id";
-    private final static String XML_TAG_LAT = "lat";
-    private final static String XML_TAG_LON = "lon";
-    private final static String XML_TAG_WAY = "way";
-    private final static String XML_TAG_ND = "nd";
-    private final static String XML_TAG_REF = "ref";
-    private final static String XML_TAG_NAME = "name"; //需要记录下value的tag key
-    private final static String FILE_EXT_WKT = "wkt";
-    private final static String FILE_EXT_OSM = "osm";
     /**
      * 几何WKT字串
      */
@@ -71,7 +64,7 @@ public class OSM2WKT extends DefaultHandler {
     private String kvcontentsW = "";
     private String kvcontentsN = "";
     private String kvcontentsR = "";
-    //private String pointids = "";
+
     private Vector<String> pointids;
     private Vector<Nodes> points;
     private Vector<String> nodeIDs;
@@ -79,11 +72,11 @@ public class OSM2WKT extends DefaultHandler {
     private Vector<String> relationIDs;
     private Nodes nodes;
     private Way way;
-    private Relations relation;
+    private Relation relation;
 
     private List<Nodes> nodeslist;
     private List<Way> waylist;
-    private List<Relations> relationlist;
+    private List<Relation> relationlist;
 
     /**
      * 用HashMap进行存储内存会溢出，这是OSMtoWKT使用的方法
@@ -123,285 +116,6 @@ public class OSM2WKT extends DefaultHandler {
     private Integer tagIF = 0;
 
     private static String SplitStr = "--";
-
-    @Override
-    public void startDocument() throws SAXException {
-        nodeslist = new ArrayList<Nodes>();
-        waylist = new ArrayList<Way>();
-        relationlist = new ArrayList<Relations>();
-        System.out.println("正在读取XML(OSM)文档，如果数据量过大需要一段时间，请耐心等待……");
-    }
-
-    @Override
-    public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
-
-        // 对node进行操作
-        if ("node".equals(qName)) { //记录下node的id和经纬度
-            //先对前一节点进行处理
-            /**
-             * 之所以要进行这步工作，是因为可能多个node共有相同的tag，
-             * 但是只有OSM文件中距离tag最近的node可以记录下tag的value&&key
-             * 因此我们想办法将共有相同tag的node先存进nodelist，在endElement进行之后对他们进行统一setTag操作
-             */
-            if(tagIF == 1) {
-                for(int i = 0; i < tagN; i++) {
-                    nodeslist.get(i).setTag(kvcontentsN);
-                    Nodes n = new Nodes();
-                    n = nodeslist.get(i);
-                    System.out.println("Node Id: " + n.getId() + "\tName: " + n.getTag());
-                    HandleFiles.WriteFile(NodePath, n.getId() + SplitStr + n.getLon() + SplitStr + n.getLat() + SplitStr + n.getTag() + "\r\n");
-                }
-                nodeslist.clear();;
-                kvcontentsN = "";
-                curretntag = "";
-                plagN = 0;
-                tagN = 0;
-                nodes = null;
-                tagIF = 0;
-            }
-            if (attributes.getValue("id") != null && attributes.getValue("id") != "")
-                idcontents = attributes.getValue("id");
-            else
-                idcontents = "0";
-            if (attributes.getValue("lon") != null && attributes.getValue("lon") != "")
-                loncontents = attributes.getValue("lon");
-            else
-                loncontents = "0";
-            if (attributes.getValue("lat") != null && attributes.getValue("lat") != "")
-                latcontents = attributes.getValue("lat");
-            else
-                latcontents = "0";
-            curretntag = "node";
-            countp++;
-            tagN++;
-            nodes = new Nodes();
-            nodes.setId(idcontents);
-            nodes.setLon(loncontents);
-            nodes.setLat(latcontents);
-            nodes.setTag(kvcontentsN);
-            nodeslist.add(nodes);
-        }
-
-        if ("node".equals(curretntag) && "tag".equals(qName) && plagN == 0) {
-            tagIF = 1;
-            String kcontents = attributes.getValue("k");
-            String vcontents = attributes.getValue("v");
-            kvcontentsN = kcontents + "-" + vcontents; //这是在没有name的情况下，记录下一个key及其value作为tag
-            if(kcontents.equals(XML_TAG_NAME) || kcontents.equals(XML_TAG_NAME + ":zh")) { //提取出OSM实体node的name.如果有中文名，就记录下中文名
-                plagN = 1;
-                //kvcontentsN = kcontents + "=" + vcontents;
-                kvcontentsN = vcontents;
-            }
-            kvcontentsN.replace("&#10", " ");
-            kvcontentsN.replace("&#13", " ");
-        }
-        if("node".equals(curretntag) && "tag".equals(qName) && attributes.getValue("k").equals(XML_TAG_NAME + ":zh")) {
-            String kcontents = attributes.getValue("k");
-            String vcontents = attributes.getValue("v");
-            plagN = 1;
-            //kvcontentsN = kcontents + "=" + vcontents;
-            kvcontentsN = vcontents;
-            kvcontentsN.replace("&#10", " ");
-            kvcontentsN.replace("&#13", " ");
-        }
-
-        //对way操作
-        if ("way".equals(qName)) {
-            //先对前一节点进行处理
-            /**
-             * 之所以要进行这步工作，是因为可能多个node共有相同的tag，
-             * 但是只有OSM文件中距离tag最近的node可以记录下tag的value&&key
-             * 因此我们想办法将共有相同tag的node先存进nodelist，对他们进行统一setTag操作
-             * 在"way".equals(qName)的情况下，这一步只会进行一次，就是记录下OSM文件中最后一个node的信息
-             * OSM文件的feature记录顺序是node--->way--->relation
-             */
-            if(tagIF == 1) {
-                for(int i = 0; i < tagN; i++) {
-                    nodeslist.get(i).setTag(kvcontentsN);
-                    Nodes n = new Nodes();
-                    n = nodeslist.get(i);
-                    System.out.println("Node Id: " + n.getId() + "\tName: " + n.getTag());
-                    HandleFiles.WriteFile(NodePath, n.getId() + SplitStr + n.getLon() + SplitStr + n.getLat() + SplitStr + n.getTag() + "\r\n");
-                }
-                nodeslist.clear();;
-                kvcontentsN = "";
-                curretntag = "";
-                plagN = 0;
-                tagN = 0;
-                tagIF = 0;
-                nodes = null;
-            }
-            //再对way进行操作
-            way = new Way();
-            pointids = new Vector<String>();
-            points = new Vector<Nodes>();
-            if (attributes.getValue("id") != null && attributes.getValue("id") != "")
-                idcontents = attributes.getValue("id");
-            else
-                idcontents = "0";
-            curretntag = "way";
-            countw++;
-        }
-
-        if ("way".equals(curretntag) && "tag".equals(qName) && plagW == 0) {
-            String kcontents = attributes.getValue("k");
-            String vcontents = attributes.getValue("v");
-            kvcontentsW = kcontents + "-" + vcontents;//这是在没有name的情况下，记录下一个key及其value作为tag
-            if(kcontents.equals(XML_TAG_NAME)) { //提取出OSM实体way的name
-                plagW = 1;
-                //kvcontentsW = kcontents + "=" + vcontents;
-                kvcontentsW = vcontents;
-            }
-            kvcontentsW.replace("&#10", " ");
-            kvcontentsW.replace("&#13", " ");
-        }
-        if("way".equals(curretntag) && "tag".equals(qName) && attributes.getValue("k").equals(XML_TAG_NAME + ":zh")) {
-            String kcontents = attributes.getValue("k");
-            String vcontents = attributes.getValue("v");
-            plagW = 1;
-            //kvcontentsW = kcontents + "=" + vcontents;
-            kvcontentsW = vcontents;
-            kvcontentsW.replace("&#10", " ");
-            kvcontentsW.replace("&#13", " ");
-        }
-
-        if ("way".equals(curretntag) && "nd".equals(qName)) { //对way的引用node操作
-            String ref = attributes.getValue("ref");
-            pointids.add(ref);
-        }
-
-        //对relation操作
-        if ("relation".equals(qName)) {
-            nodeIDs = new Vector<String>();
-            wayIDs = new Vector<String>();
-            relationIDs = new Vector<String>();
-            if (attributes.getValue("id") != null && attributes.getValue("id") != "")
-                idcontents = attributes.getValue("id");
-            else
-                idcontents = "0";
-            curretntag = "relation";
-            countr++;
-        }
-
-        if ("relation".equals(curretntag) && "tag".equals(qName) && plagR == 0) {
-            String kcontents = attributes.getValue("k");
-            String vcontents = attributes.getValue("v");
-            kvcontentsR = kcontents + "-" + vcontents;//这是在没有name的情况下，记录下一个key及其value作为tag
-            if(kcontents.equals(XML_TAG_NAME)) { //提取出OSM实体relation的name
-                plagR = 1;
-                //kvcontentsR = kcontents + "=" + vcontents;
-                kvcontentsR = vcontents;
-            }
-            kvcontentsR.replace("&#10", " ");
-            kvcontentsR.replace("&#13", " ");
-        }
-        if("relation".equals(curretntag) && "tag".equals(qName) && attributes.getValue("k").equals(XML_TAG_NAME + ":zh")) {
-            String kcontents = attributes.getValue("k");
-            String vcontents = attributes.getValue("v");
-            //kvcontentsR = kcontents + "=" + vcontents;
-            kvcontentsR = vcontents;
-            plagR = 1;
-            kvcontentsR.replace("&#10", " ");
-            kvcontentsR.replace("&#13", " ");
-        }
-
-        if ("relation".equals(curretntag) && "member".equals(qName)) { //对relation引用的node和way操作
-            String member = attributes.getValue("type");
-            if(member.equals("node")) {
-                nodeIDs.add(attributes.getValue("ref"));
-            }
-            if(member.equals("way")) {
-                wayIDs.add(attributes.getValue("ref"));
-            }
-            if(member.equals("relation")) {
-                relationIDs.add(attributes.getValue("ref"));
-            }
-        }
-    }
-
-    @Override
-    public void endElement(String uri, String localName, String qName) throws SAXException {
-        //对node进行处理
-
-        //对way进行处理
-        if ("way".equals(qName)) {
-            kvcontentsW.replace("&#10", " ");
-            kvcontentsW.replace("&#13", " ");
-            way.setId(idcontents);
-            way.setTag(kvcontentsW);
-            way.setPointids(pointids);
-            System.out.println("Way Id:" + way.getId() + "\tName: " + way.getTag());
-            if (polygonOrPolyline(way.getPointids())) {
-                System.out.print("Polygon");
-            } else {
-                System.out.print("Polyline");
-            }
-            System.out.println(way.getPointids());
-            HandleFiles.WriteFile(WayPath, way.getId() + SplitStr + way.getTag() + SplitStr + way.getPointids() + "\r\n");
-            kvcontentsW = "";
-            curretntag = "";
-            pointids = null;
-            plagW = 0;
-            way = null;
-        }
-
-        //对relation进行处理
-        if ("relation".equals(qName)) {
-            kvcontentsR.replace("&#10", " ");
-            kvcontentsR.replace("&#13", " ");
-            relation = new Relations();
-            relation.setId(idcontents);
-            relation.setTag(kvcontentsR);
-            relation.setnodeIDs(nodeIDs);
-            relation.setwayIDs(wayIDs);
-            relation.setrelationIDs(relationIDs);
-            System.out.println("Relation Id:" + relation.getId() + "\tName: " + relation.getTag());
-            System.out.println(relation.getnodeIDs() + ", " + relation.getwayIDs() + ", " + relation.getrelationIDs());
-            HandleFiles.WriteFile(RelationPath, relation.getId() + SplitStr + relation.getTag() + SplitStr +
-                    relation.getnodeIDs() + SplitStr + relation.getwayIDs() + SplitStr + relation.getrelationIDs() + "\r\n");
-            kvcontentsR = "";
-            curretntag = "";
-            nodeIDs = null;
-            wayIDs = null;
-            relationIDs = null;
-            plagR = 0;
-            relation = null;
-        }
-    }
-
-    @Override
-    public void endDocument() throws SAXException {
-        //对前面没有处理完的waylist进行处理
-        if (!waylist.isEmpty()) {
-            for (int i = 0; i < waylist.size(); i++) {
-                //streets.put(waylist.get(i).getId(), waylist.get(i).getPointids());
-                System.out.println("Way Id:" + waylist.get(i).getId() + "\tName: " + waylist.get(i).getTag());
-                try {
-                    if (polygonOrPolyline(waylist.get(i).getPointids()))
-                        Type = true; //polygon;
-                    else
-                        Type = false;
-                    if(Type == true){
-                        System.out.println("Polygon" + waylist.get(i).getPointids());
-                    }
-                    if(Type == false){
-                        System.out.println("Polyline" + waylist.get(i).getPointids());
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-            waylist.clear();
-        }
-        //对前面没有处理完的relationlist进行处理
-        if (!relationlist.isEmpty()) {
-            for (int i = 0; i < relationlist.size(); i++) {
-                System.out.println("Relation Id:" + relationlist.get(i).getId() + "\tName: " + relationlist.get(i).getTag());
-                System.out.println(relationlist.get(i).getnodeIDs() + ", " + relationlist.get(i).getwayIDs() + ", " + relationlist.get(i).getrelationIDs());
-            }
-            relationlist.clear();
-        }
-    }
 
     public static boolean isNumeric(String str) {
         for (int i = str.length();--i>=0;){
@@ -563,11 +277,11 @@ public class OSM2WKT extends DefaultHandler {
         return way;
     }
 
-    public static Relations getRelation(String relationline) {
+    public static Relation getRelation(String relationline) {
         if(relationline == null) {
             return null;
         }
-        Relations relation = new Relations();
+        Relation relation = new Relation();
         //String[] relationInf = relationline.split(SplitStr);
         String[] relationInf = getSplit(relationline);
         if(!isNumeric(relationInf[0])) {
@@ -625,11 +339,11 @@ public class OSM2WKT extends DefaultHandler {
         relation.setrelationIDs(relationref);
         return relation;
     }
-    public static Relations getRelationByID(String relationID, String relationPath) {
+    public static Relation getRelationByID(String relationID, String relationPath) {
         if(relationID == null || !isNumeric(relationID)) {
             return null;
         }
-        Relations relation = new Relations();
+        Relation relation = new Relation();
         Vector<String> noderef = new Vector<String>();
         Vector<String> wayref = new Vector<String>();
         Vector<String> relationref = new Vector<String>();
@@ -721,45 +435,6 @@ public class OSM2WKT extends DefaultHandler {
         BigDecimal bd = new BigDecimal(Double.toString(d));
         bd = bd.setScale(decimalPlace, BigDecimal.ROUND_HALF_UP);
         return bd.doubleValue();
-    }
-
-    public boolean readOSM(String filePath) {
-        System.out.println("reading in openstreetmap xml ...");
-        try {
-            // check if file exists
-            File file = new File(filePath);
-            if (!file.exists()) {
-                System.out.println("osm file " + filePath + " does not exist");
-                return false;
-            }
-            // read in xml
-            InputStream inStream = null;
-            try {
-                inStream = new FileInputStream(filePath);
-                SAXParserFactory saxfac = SAXParserFactory.newInstance();
-                SAXParser saxParser = saxfac.newSAXParser();
-                saxParser.parse(inStream, this);
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (ParserConfigurationException e) {
-                e.printStackTrace();
-            } catch (SAXException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            } finally {
-                try {
-                    inStream.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        } catch (Exception e) {
-            System.out.println("reading osm file failed: " + e.getLocalizedMessage());
-            e.printStackTrace();
-            return false;
-        }
-        return true;
     }
 
     //****************************************************************************
@@ -1024,7 +699,7 @@ public class OSM2WKT extends DefaultHandler {
         return tempVector;
 
     }
-    public static String relation2WKT(Relations relation, String nodePath, String wayPath, String relationPath) {
+    public static String relation2WKT(Relation relation, String nodePath, String wayPath, String relationPath) {
         System.out.println("Before:" + relation.getnodeIDs() + "," + relation.getwayIDs());
         String str = "";
         Vector<String> noder = relation.getnodeIDs();
@@ -1037,7 +712,7 @@ public class OSM2WKT extends DefaultHandler {
                  * 比如说，relation,270056,中国,Q148，有<member type="relation" ref="913011" role="subarea"/>这条reference，
                  * 但是在osm文件里搜索不到id为913011的relation、
                  */
-                Relations re = getRelationByID(sr, relationPath);
+                Relation re = getRelationByID(sr, relationPath);
                 if (re != null && re.getnodeIDs() != null) {
                     for (int j = 0; j < re.getnodeIDs().size(); j++) {
                         noder.add(re.getnodeIDs().elementAt(j));
@@ -1214,7 +889,7 @@ public class OSM2WKT extends DefaultHandler {
                     relationreader = new BufferedReader(new FileReader(relationfile), 10 * 1024 * 1024);
                     String ss = null;
                     while((ss = relationreader.readLine()) != null) {
-                        Relations r = new Relations();
+                        Relation r = new Relation();
                         r = getRelation(ss);
                         if(r == null) {
                             continue;
@@ -1272,11 +947,6 @@ public class OSM2WKT extends DefaultHandler {
     }
 
     public static void main(String[] args) {
-		/*System.out.println("osm2wkt v1.2.0- convert " + "openstreetmap to wkt - Christoph P. Mayer - mayer@kit.edu");
-		if(args.length < 1 || args.length > 7){
-			printUsage();
-			return;
-		}*/
 
         OSM2WKT obj = new OSM2WKT();
         String node = "node";
@@ -1300,297 +970,9 @@ public class OSM2WKT extends DefaultHandler {
         String destfile3 = "F:\\OSM2WKT_Relation.txt";
         String Wiki_NameEn = "F:\\Wiki-Name_EN&&ID.csv";
 
-        if (destfile1.length() == 0) destfile1 = file + "." + FILE_EXT_WKT;
-        if (destfile2.length() == 0) destfile2 = file + "." + FILE_EXT_WKT;
-        if (destfile3.length() == 0) destfile3 = file + "." + FILE_EXT_WKT;
         String filelower = file.toLowerCase();
 
         System.out.println("converting file " + file + " ...");
-        obj.readOSM(file);
-        /*if (filelower.endsWith(FILE_EXT_OSM)) {
-            if (!obj.readOSM(file))
-                return;
-            //obj.readOSM(file);
-            /*if (!obj.transformCoordinates())
-                return;*/
-            /*
-            if (!obj.writeWkt(destfile1, node))
-                return;
-
-            if (!obj.writeWkt(destfile2, way))
-                return;
-            if (!obj.writeWkt(destfile3, relation))
-                return;*/
-        /*} else if (filelower.endsWith(FILE_EXT_WKT)) {
-            if (!obj.readWkt(file))
-                return;
-            if (!obj.writeWkt(destfile1, node, NodePath, WayPath, RelationPath))
-                return;
-            if (!obj.writeWkt(destfile2, way, NodePath, WayPath, RelationPath))
-                return;
-            if (!obj.writeWkt(destfile3, relation, NodePath, WayPath, RelationPath))
-                return;
-        } else {
-            System.out.println("unknown file extension in " + filelower);
-            return;
-        }*/
-        //String s = way2WKT(getWaybyID("101917176", WayPath), NodePath);
-        //System.out.println(s);
-        //System.out.println("written to new file " + destfile1 + ", " + destfile2 + ", " + destfile3);
-        System.out.println("done!");
-
     }
 }
 
-
-class Nodes {
-    //对应于XML中的node，数据库中的Point
-    private String id;
-    private String lon;
-    private String lat;
-    private String tag;
-    /*
-    private String version;
-    private String uid;
-    private String user;
-    private String changeset;
-    private String timestamp;
-    //private String visible;
-    */
-
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null) return false;
-        if (!this.getClass().isInstance(o))
-            return false;
-        Nodes ol = (Nodes) o;
-        return (this.id == ol.id);
-    }
-
-    public String getTag() {
-        return tag;
-    }
-    public void setTag(String tag) {
-        this.tag = tag;
-    }
-    public String getId() {
-        return id;
-    }
-    public void setId(String id) {
-        this.id = id;
-    }
-    public String getLon() {
-        return lon;
-    }
-    public void setLon(String lon) {
-        this.lon = lon;
-    }
-    public String getLat() {
-        return lat;
-    }
-    public void setLat(String lat) {
-        this.lat = lat;
-    }
-    /*
-    public String getVersion() {
-        return version;
-    }
-    public void setVersion(String version) {
-        this.version = version;
-    }
-    public String getUid() {
-        return uid;
-    }
-    public void setUid(String uid) {
-        this.uid = uid;
-    }
-    public String getUser() {
-        return user;
-    }
-    public void setUser(String user) {
-        this.user = user;
-    }
-    public String getChangeset() {
-        return changeset;
-    }
-    public void setChangeset(String changeset) {
-        this.changeset = changeset;
-    }
-    public String getTimestamp() {
-        return timestamp;
-    }
-    public void setTimestamp(String timestamp) {
-        this.timestamp = timestamp;
-    }
-    /*public String getVisible() {
-        return visible;
-    }
-    public void setVisible(String visible) {
-        this.visible = visible;
-    }*/
-}
-class Way{
-    //对应于XML中的way、数据库中的Polylin和Polygon
-    private String id;
-    private String tag;
-    private List<Nodes> points;
-    //private String pointids;
-    private Vector<String> pointids;
-    /*
-    private String version;
-    private String uid;
-    private String user;
-    private String changeset;
-    private String timestamp;
-    //private String visible;
-    */
-
-    /*public String getVisible() {
-        return visible;
-    }
-    public void setVisible(String visible) {
-        this.visible = visible;
-    }*/
-    public Vector<String> getPointids() {
-        return pointids;
-    }
-    public void setPointids(Vector<String> pointids) {
-        this.pointids = pointids;
-    }
-    public List<Nodes> getPoint() {
-        return points;
-    }
-    public void setPoint(List<Nodes> points) {
-        this.points = points;
-    }
-    public String getTag() {
-        return tag;
-    }
-    public void setTag(String tag) {
-        this.tag = tag;
-    }
-    public String getId() {
-        return id;
-    }
-    public void setId(String id) {
-        this.id = id;
-    }
-    /*
-    public String getVersion() {
-        return version;
-    }
-    public void setVersion(String version) {
-        this.version = version;
-    }
-    public String getUid() {
-        return uid;
-    }
-    public void setUid(String uid) {
-        this.uid = uid;
-    }
-    public String getUser() {
-        return user;
-    }
-    public void setUser(String user) {
-        this.user = user;
-    }
-    public String getChangeset() {
-        return changeset;
-    }
-    public void setChangeset(String changeset) {
-        this.changeset = changeset;
-    }
-    public String getTimestamp() {
-        return timestamp;
-    }
-    public void setTimestamp(String timestamp) {
-        this.timestamp = timestamp;
-    }
-    */
-}
-
-class Relations {
-    private String id;
-    private String tag;
-    private Vector<String> nodeIDs;
-    private Vector<String> wayIDs;
-    private Vector<String> relationIDs;
-    /*
-    private String version;
-    private String uid;
-    private String user;
-    private String changeset;
-    private String timestamp;
-    //private String visible;
-    */
-
-    /*public String getVisible() {
-        return visible;
-    }
-    public void setVisible(String visible) {
-        this.visible = visible;
-    }*/
-    public Vector<String> getnodeIDs() {
-        return nodeIDs;
-    }
-    public void setnodeIDs(Vector<String> nodeIDs) {
-        this.nodeIDs = nodeIDs;
-    }
-    public Vector<String> getwayIDs() {
-        return wayIDs;
-    }
-    public void setwayIDs(Vector<String> wayIDs) {
-        this.wayIDs = wayIDs;
-    }
-    public Vector<String> getrelationIDs() {
-        return relationIDs;
-    }
-    public void setrelationIDs(Vector<String> relationIDs) {
-        this.relationIDs = relationIDs;
-    }
-    public String getTag() {
-        return tag;
-    }
-    public void setTag(String tag) {
-        this.tag = tag;
-    }
-    public String getId() {
-        return id;
-    }
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    /*
-    public String getVersion() {
-        return version;
-    }
-    public void setVersion(String version) {
-        this.version = version;
-    }
-    public String getUid() {
-        return uid;
-    }
-    public void setUid(String uid) {
-        this.uid = uid;
-    }
-    public String getUser() {
-        return user;
-    }
-    public void setUser(String user) {
-        this.user = user;
-    }
-    public String getChangeset() {
-        return changeset;
-    }
-    public void setChangeset(String changeset) {
-        this.changeset = changeset;
-    }
-    public String getTimestamp() {
-        return timestamp;
-    }
-    public void setTimestamp(String timestamp) {
-        this.timestamp = timestamp;
-    }
-    */
-}
