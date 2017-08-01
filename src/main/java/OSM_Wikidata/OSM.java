@@ -242,8 +242,8 @@ public class OSM extends OSM_Wikidata{
 
         String OSMwithWiki_Taiwan = "F:\\OSMwithWiki_Taiwan.csv";
         String OSMwithWiki_China = "F:\\OSMwithWiki_China.csv";
-        String RDFfile_Taiwan = "F:\\RDF_OSM_Taiwan.ttl";
-        String RDFfile_China = "F:\\RDF_OSM_China.ttl";
+        String RDFfile_Taiwan = "F:\\RDF_OSM_Taiwan.xml";
+        String RDFfile_China = "F:\\RDF_OSM_China.xml";
         //String RDFfile_Taiwan = "F:\\RDF_OSM_Taiwan.n3";
         //String RDFfile_China = "F:\\RDF_OSM_China.n3";
         String NodePath_Taiwan = "F:\\NodePath_Taiwan.txt";

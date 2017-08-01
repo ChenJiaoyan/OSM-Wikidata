@@ -38,11 +38,10 @@ relation ID--name--引用的node集合--引用的way集合--引用的relation集
 "F:\\RelationPath(Wiki)_China.txt";
 
 运行/src/main/java/OSM_Wikidata下的OSM.java文件，得到OSM数据的RDF格式：
-"F:\\RDF_OSM_Taiwan.ttl";
-"F:\\RDF_OSM_China.ttl";
+"F:\\RDF_OSM_Taiwan.xml";
+"F:\\RDF_OSM_China.xml";
 运行/src/main/java/OSM_Wikidata下的Wikidata.java文件，得到Wikidata数据的RDF格式：
-"F:\\RDF_Wiki_Taiwan.ttl";
-"F:\\RDF_Wiki_China.ttl";
+"F:\\RDF_Wiki_Taiwan.xml";
 运行/src/main/java/OSM_Wikidata下的RDF.java文件，得到OSM数据和Wikidata数据的RDF格式（代码优化）
 
 

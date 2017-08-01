@@ -158,6 +158,7 @@ public class OSMInfoSave {
                 for(int r=0; r<3; r++) {
                     // China数据运行的时候，r=0（node）这部分运行结束之后，way和relation的数据存储卡壳了，只有把r设成从1开始才能得到way和relation的数据
                     // 但是"OSMwithWiki_China.osm"可以正常跑出来，不知为何
+                    newstr = new String(stringLine.getBytes(encode), encode).trim();
                     if(newstr.indexOf(feature[r] + " id=\"") > 0) {
                         while(newstr.indexOf("<tag k=\"" + key + "\" v=\"") < 0 && newstr.indexOf("</" + feature[r] + ">") < 0) {
                             strGroup.add(stringLine + "\r\n");
@@ -308,6 +309,7 @@ public class OSMInfoSave {
     }
 
     public static void main(String[] args) {
+        /*
         String filePathTaiwan = "F:\\taiwan-latest.osm";
         String encodeT = HandleFiles.getFileEncode(filePathTaiwan);
         String filePathChina = "F:\\china-latest.osm";
@@ -320,12 +322,24 @@ public class OSMInfoSave {
         String wayPathTaiwan = "F:\\OSMWay_Taiwan.txt";
         String relationPathChina = "F:\\OSMRelation_China.txt";
         String relationPathTaiwan = "F:\\OSMRelation_Taiwan.txt";
+*/
+        String rootPath = "F:\\SmallApple\\OSM-Wikidata_data\\Data\\OSM\\";
+        String filePath = rootPath + "australia-latest.osm";
+        String encode = HandleFiles.getFileEncode(filePath);
+        String rootPath2 = "F:\\SmallApple\\OSM-Wikidata_data\\other\\";
+        String resultPath = rootPath2 + "OSMwithWiki_Australia.osm";
+        String nodePath = rootPath2 + "OSMNode_Australia.txt";
+        String wayPath = rootPath2 + "OSMWay_Australia.txt";
+        String relationPath = rootPath2 + "OSMRelation_Australia.txt";
+
         String key = "wikidata";
         try {
             //OSMFileSave(filePathTaiwan, encodeT, resultPathTaiwan, nodePathTaiwan, wayPathTaiwan, relationPathTaiwan , key);
             //OSMFileSave(filePathChina, encodeC, resultPathChina, nodePathChina, wayPathChina, relationPathChina, key);
             //OSMFileSave2(filePathTaiwan, encodeT, resultPathTaiwan, key);
-            OSMFileSave2(filePathChina, encodeC, resultPathChina, key);
+            //OSMFileSave2(filePathChina, encodeC, resultPathChina, key);
+            //OSMFileSave(filePath, encode, resultPath, nodePath, wayPath, relationPath, key);
+            OSMFileSave2(filePath, encode, resultPath, key);
         } catch (IOException e) {
             e.printStackTrace();
         } catch (Exception e) {
