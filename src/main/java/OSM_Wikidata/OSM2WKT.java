@@ -1290,7 +1290,9 @@ public class OSM2WKT extends DefaultHandler {
         //RelationPath = "F:\\RelationPath.txt";
         //文档的保存、重命名
         //String file = "F:/taiwan-latest.osm";
-        String file = "F:/OSMwithWiki_Taiwan.osm";
+        String rootPath = "F:\\SmallApple\\OSM-Wikidata_data\\Data\\OSM\\";
+        String file = rootPath + "australia-latest.osm";
+        //String file = "F:/OSMwithWiki_Taiwan.osm";
         //String file = "F:/china-latest.osm";
         //String file = "F:/OSMwithWiki_China.osm";
         String destfile1 = "F:\\OSM2WKT_Node.txt";

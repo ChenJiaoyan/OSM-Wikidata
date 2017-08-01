@@ -339,7 +339,8 @@ public class OSMInfoSave {
             //OSMFileSave2(filePathTaiwan, encodeT, resultPathTaiwan, key);
             //OSMFileSave2(filePathChina, encodeC, resultPathChina, key);
             //OSMFileSave(filePath, encode, resultPath, nodePath, wayPath, relationPath, key);
-            OSMFileSave2(filePath, encode, resultPath, key);
+            //OSMFileSave2(filePath, encode, resultPath, key);
+            OSMFileSave(filePath, encode, resultPath, nodePath, wayPath, relationPath, key);
         } catch (IOException e) {
             e.printStackTrace();
         } catch (Exception e) {

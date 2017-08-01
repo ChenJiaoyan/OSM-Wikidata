@@ -246,12 +246,15 @@ public class Tag extends DefaultHandler {
     }
 
     public static void main(String[] args) {
+        String rootPath = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\other\\";
         String OSMPath_Taiwan = "F:\\OSMwithWiki_Taiwan.osm";
         String OSMPath_China = "F:\\OSMwithWiki_China.osm";
+        String OSMPath_Australia = rootPath + "OSMwithWiki_Australia.osm";
         Tag tag = new Tag();
-        tag.readOSM(OSMPath_Taiwan);
-        tag.readIF = 1;
-        tag.readOSM(OSMPath_China);
+        tag.readOSM(OSMPath_Australia);
+//        tag.readOSM(OSMPath_Taiwan);
+//        tag.readIF = 1;
+//        tag.readOSM(OSMPath_China);
         System.out.println("done!");
     }
 }
