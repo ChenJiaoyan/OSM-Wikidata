@@ -1,10 +1,10 @@
 package OSM_Wikidata;
 
-import FileHandle.HandleFiles;
-import oracle.spatial.geometry.JGeometry;
+import OSM.Nodes;
+import OSM.Relation;
+import OSM.Way;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
-import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.util.FileManager;
 import org.apache.jena.vocabulary.OWL;
 import org.apache.jena.vocabulary.RDFS;
@@ -12,23 +12,16 @@ import org.apache.jena.vocabulary.VCARD;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
-import org.slf4j.*;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 import java.io.*;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Vector;
 
-import oracle.spatial.util.*;
-
 import static OSM_Wikidata.OSM2WKT.polygonOrPolyline;
-import static OSM_Wikidata.OSM_Wikidata.toUpperCaseFirstOne;
-
-import OSM.*;
 /**
  * Created by SmallApple on 2017/7/19.
  */
@@ -160,6 +153,14 @@ public class RDF extends DefaultHandler {
          * 对way操作
          */
         if (XML_TAG_WAY.equals(qName)) {
+            // 存model（node）
+            if(saveNode == 0) {
+                writeSelectedRDF(model_OSM, RDF_OSM_file + "_N.xml", "RDF/XML-ABBREV");
+                writeSelectedRDF(model_OSM, RDF_OSM_file + "_N.ttl", "Turtle");
+                writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_N.xml", "RDF/XML-ABBREV");
+                writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_N.ttl", "Turtle");
+                saveNode = 1;
+            }
             way = new Way();
             pointids = new Vector<String>();
             points = new Vector<Nodes>();
@@ -200,6 +201,14 @@ public class RDF extends DefaultHandler {
          * 对relation操作
          */
         if (XML_TAG_Relation.equals(qName)) {
+            // 存model（way）
+            if(saveWay == 0) {
+                writeSelectedRDF(model_OSM, RDF_OSM_file + "_W.xml", "RDF/XML-ABBREV");
+                writeSelectedRDF(model_OSM, RDF_OSM_file + "_W.ttl", "Turtle");
+                writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_W.xml", "RDF/XML-ABBREV");
+                writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_W.ttl", "Turtle");
+                saveWay = 1;
+            }
             nodeIDs = new Vector<String>();
             wayIDs = new Vector<String>();
             relationIDs = new Vector<String>();
@@ -285,14 +294,6 @@ public class RDF extends DefaultHandler {
 
         //对way进行处理
         if (XML_TAG_WAY.equals(qName)) {
-            // 存model（node）
-            if(saveNode == 0) {
-                writeSelectedRDF(model_OSM, RDF_OSM_file + "_N.xml", "RDF/XML-ABBREV");
-                writeSelectedRDF(model_OSM, RDF_OSM_file + "_N.ttl", "Turtle");
-                writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_N.xml", "RDF/XML-ABBREV");
-                writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_N.ttl", "Turtle");
-                saveNode = 1;
-            }
             if(kvcontentsWiki != "") {
                 way.setId(idcontents);
                 way.setTag(kvcontentsWiki);
@@ -326,14 +327,6 @@ public class RDF extends DefaultHandler {
 
         //对relation进行处理
         if (XML_TAG_Relation.equals(qName)) {
-            // 存model（way）
-            if(saveWay == 0) {
-                writeSelectedRDF(model_OSM, RDF_OSM_file + "_W.xml", "RDF/XML-ABBREV");
-                writeSelectedRDF(model_OSM, RDF_OSM_file + "_W.ttl", "Turtle");
-                writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_W.xml", "RDF/XML-ABBREV");
-                writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_W.ttl", "Turtle");
-                saveWay = 1;
-            }
             if(kvcontentsWiki != "") {
                 relation = new Relation();
                 relation.setId(idcontents);
@@ -445,6 +438,7 @@ public class RDF extends DefaultHandler {
                     .addProperty(RDFS.subClassOf, osm.getType().get(0))
                     .addProperty(org.apache.jena.vocabulary.RDF.type, osm.OSM_Type)
                     .addProperty(VCARD.UID, osm.getIDType() + "/" + osm.getID())
+                    //.addProperty()
             ;
             if ( osm.getName_en() != "" && osm.getName_en() != null ) {
                 rdfmodel.createResource(osm.getURI())
@@ -472,12 +466,10 @@ public class RDF extends DefaultHandler {
         type.add("WikidataEntity");
         wiki.setType(type);
         wiki.setID(osm.getSameAs());
-        System.out.println(osm.getID());
         wiki.setLabel(osm.getLabel());
         wiki.setName_zh(osm.getName_zh());
         wiki.setName_en(osm.getName_en());
         wiki.setSameAs(osm.getID());
-        System.out.println(wiki.getSameAs() + "\t" + osm.getID());
         wiki.setURI("http://www.wikidata.org/wiki/" + wiki.getID());
         String wkt = wiki.getWKT();
         if (wiki.getWKT() != null) {
@@ -624,12 +616,6 @@ public class RDF extends DefaultHandler {
         String area, Area;
         String rdfOSMFile, rdfWikiFile;
         String format, suffix;
-        //For PC
-        OSMrootPath = "F:/SmallApple/OSM-Wikidata_data/Result/";
-        RDFrootPath = "F:/SmallApple/OSM-Wikidata_data/Result_the end/";
-        //ForServer
-        OSMrootPath = "/home/dsm/OSM-Wikidata/Result/";
-        RDFrootPath = "/home/dsm/OSM-Wikidata/Result_the end/";
 
         area = "taiwan";
         Area = "Taiwan";
@@ -637,15 +623,23 @@ public class RDF extends DefaultHandler {
         Area = "China";
         area = "australia";
         Area = "Australia";
-        OSMPath = OSMrootPath + "OSMwithWiki_" + Area + ".osm";
-        //rdf.readOSM(OSMPath);
-        OSMrootPath = "F:/SmallApple/OSM-Wikidata_data/other/";
+        //For PC
+        OSMrootPath = "F:/SmallApple/OSM-Wikidata_data/Result/";
         RDFrootPath = "F:/SmallApple/OSM-Wikidata_data/Result_the end/";
+        OSMrootPath = "F:/SmallApple/OSM-Wikidata_data/other/";
+        RDFrootPath = "F:/SmallApple/OSM-Wikidata_data/other/";
+
+        /*
+        //ForServer
+        OSMrootPath = "/home/dsm/OSM-Wikidata/Result/" + Area + "/";
+        RDFrootPath = "/home/dsm/OSM-Wikidata/Result_the end/" + Area + "/";
+        */
+        OSMPath = OSMrootPath + "OSMwithWiki_" + Area + ".osm";
         rdf.RDF_OSM_file = RDFrootPath + "RDF_OSM_" + Area;
         rdf.RDF_Wiki_file = RDFrootPath + "RDF_Wiki_" + Area;
-        rdf.NodePath = OSMrootPath + "NodePath_" + Area + ".txt";
-        rdf.WayPath = OSMrootPath + "WayPath_" + Area + ".txt";
-        rdf.RelationPath = OSMrootPath + "RelationPath_" + Area + ".txt";
+        rdf.NodePath = OSMrootPath + "OSMNode_" + Area + ".txt";
+        rdf.WayPath = OSMrootPath + "OSMWay_" + Area + ".txt";
+        rdf.RelationPath = OSMrootPath + "OSMRelation_" + Area + ".txt";
         rdf.readOSM(OSMPath);
 
         /*
