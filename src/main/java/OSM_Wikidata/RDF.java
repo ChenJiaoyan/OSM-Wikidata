@@ -86,32 +86,12 @@ public class RDF extends DefaultHandler {
     private Integer saveNode = 0;
     private Integer saveWay = 0;
 
-    private String rootPath = "F:/SmallApple/OSM-Wikidata_data/other/";
-    private String rootRDF = rootPath + "RDF_OSM_Australia";
-    //ForServer
-    //private String rootPath = "/home/dsm/OSM-Wikidata/Result_the end/";
 
-/*
-    //运行中国台湾的数据时
-    String RDF_OSM_file = rootPath + "RDF_OSM_Taiwan";
-    String RDF_Wiki_file = rootPath + "1055534595RDF_Wiki_Taiwan";
-    String NodePath = rootPath + "NodePath_Taiwan.txt";
-    String WayPath = rootPath + "WayPath_Taiwan.txt";
-    String RelationPath = rootPath + "RelationPath_Taiwan.txt";
-*/
-/*
-    //运行中国的数据时
-    String RDF_OSM_file = rootPath + "RDF_OSM_China";
-    String RDF_Wiki_file = rootPath + "RDF_Wiki_China";
-    String NodePath = rootPath + "NodePath_China.txt";
-    String WayPath = rootPath + "WayPath_China.txt";
-    String RelationPath = rootPath + "RelationPath_China.txt";
-*/
-    String RDF_OSM_file = rootPath + "RDF_OSM_Australia";
-    String RDF_Wiki_file = rootPath + "RDF_Wiki_Australia";
-    String NodePath = rootPath + "NodePath_Australia.txt";
-    String WayPath = rootPath + "WayPath_Australia.txt";
-    String RelationPath = rootPath + "RelationPath_Australia.txt";
+    String RDF_OSM_file;
+    String RDF_Wiki_file;
+    String NodePath;
+    String WayPath;
+    String RelationPath;
     
     // create an empty model
     private Model model_OSM = ModelFactory.createDefaultModel();
@@ -285,7 +265,7 @@ public class RDF extends DefaultHandler {
                     n.setName_en(kvcontents_En);
                     // 将存在wikidata链接的node存进model_OSM
                     model_OSM = RDF_OSM(model_OSM, node2OSM(n));
-                    //model_Wiki = RDF_Wiki(model_Wiki, node2OSM(n));
+                    model_Wiki = RDF_Wiki(model_Wiki, node2OSM(n));
                     System.out.println("Node Id: " + n.getId() + "\tName: " + kvcontents + "\tZh: " + kvcontents_Zh + "\tEn: " + kvcontents_En + "\tWiki: " + kvcontentsWiki);
                     n = null;
                 }
@@ -307,10 +287,10 @@ public class RDF extends DefaultHandler {
         if (XML_TAG_WAY.equals(qName)) {
             // 存model（node）
             if(saveNode == 0) {
-                writeSelectedRDF(model_OSM, rootRDF + "_N.xml", "RDF/XML-ABBREV");
-                writeSelectedRDF(model_OSM, rootRDF + "_N.ttl", "Turtle");
-//                writeSelectedRDF(model_Wiki, rootRDF + "_N.xml", "RDF/XML-ABBREV");
-//                writeSelectedRDF(model_Wiki, rootRDF + "_N.ttl", "Turtle");
+                writeSelectedRDF(model_OSM, RDF_OSM_file + "_N.xml", "RDF/XML-ABBREV");
+                writeSelectedRDF(model_OSM, RDF_OSM_file + "_N.ttl", "Turtle");
+                writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_N.xml", "RDF/XML-ABBREV");
+                writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_N.ttl", "Turtle");
                 saveNode = 1;
             }
             if(kvcontentsWiki != "") {
@@ -322,7 +302,7 @@ public class RDF extends DefaultHandler {
                 way.setPointids(pointids);
                 // 将存在wikidata链接的way存进model_OSM
                 model_OSM = RDF_OSM(model_OSM, way2OSM(way, NodePath));
-                //model_Wiki = RDF_Wiki(model_Wiki, way2OSM(way, NodePath));
+                model_Wiki = RDF_Wiki(model_Wiki, way2OSM(way, NodePath));
                 System.out.println("Way Id:" + way.getId() + "\tName: " + kvcontents + "\tZh: " + kvcontents_Zh + "\tEn: " + kvcontents_En + "\tWiki: " + kvcontentsWiki);
                 if (polygonOrPolyline(way.getPointids())) {
                     System.out.print("Polygon");
@@ -348,10 +328,10 @@ public class RDF extends DefaultHandler {
         if (XML_TAG_Relation.equals(qName)) {
             // 存model（way）
             if(saveWay == 0) {
-                writeSelectedRDF(model_OSM, rootRDF + "_W.xml", "RDF/XML-ABBREV");
-                writeSelectedRDF(model_OSM, rootRDF + "_W.ttl", "Turtle");
-//                writeSelectedRDF(model_Wiki, rootRDF + "_W.xml", "RDF/XML-ABBREV");
-//                writeSelectedRDF(model_Wiki, rootRDF + "_W.ttl", "Turtle");
+                writeSelectedRDF(model_OSM, RDF_OSM_file + "_W.xml", "RDF/XML-ABBREV");
+                writeSelectedRDF(model_OSM, RDF_OSM_file + "_W.ttl", "Turtle");
+                writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_W.xml", "RDF/XML-ABBREV");
+                writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_W.ttl", "Turtle");
                 saveWay = 1;
             }
             if(kvcontentsWiki != "") {
@@ -366,7 +346,7 @@ public class RDF extends DefaultHandler {
                 relation.setrelationIDs(relationIDs);
                 // 将存在wikidata链接的relation存进model_OSM
                 model_OSM = RDF_OSM(model_OSM, relation2OSM(relation, NodePath, WayPath, RelationPath));
-                //model_Wiki = RDF_Wiki(model_Wiki, relation2OSM(relation, NodePath, WayPath, RelationPath));
+                model_Wiki = RDF_Wiki(model_Wiki, relation2OSM(relation, NodePath, WayPath, RelationPath));
                 System.out.println("Relation Id:" + relation.getId() + "\tName: " + kvcontents + "\tZh: " + kvcontents_Zh + "\tEn: " + kvcontents_En + "\tWiki: " + kvcontentsWiki);
                 System.out.println(relation.getnodeIDs() + ", " + relation.getwayIDs() + ", " + relation.getrelationIDs());
             }
@@ -389,10 +369,10 @@ public class RDF extends DefaultHandler {
 
     @Override
     public void endDocument() throws SAXException {
-        writeSelectedRDF(model_OSM, rootRDF + "_R.xml", "RDF/XML-ABBREV");
-        writeSelectedRDF(model_OSM, rootRDF + "_R.ttl", "Turtle");
-        //writeSelectedRDF(model_Wiki, rootRDF + "_R.xml", "RDF/XML-ABBREV");
-        //writeSelectedRDF(model_Wiki, rootRDF + "_R.ttl", "Turtle");
+        writeSelectedRDF(model_OSM, RDF_OSM_file + "_R.xml", "RDF/XML-ABBREV");
+        writeSelectedRDF(model_OSM, RDF_OSM_file + "_R.ttl", "Turtle");
+        writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_R.xml", "RDF/XML-ABBREV");
+        writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_R.ttl", "Turtle");
         System.out.println("Reading OSM/XML file is done!");
     }
 
@@ -492,10 +472,12 @@ public class RDF extends DefaultHandler {
         type.add("WikidataEntity");
         wiki.setType(type);
         wiki.setID(osm.getSameAs());
+        System.out.println(osm.getID());
         wiki.setLabel(osm.getLabel());
         wiki.setName_zh(osm.getName_zh());
         wiki.setName_en(osm.getName_en());
         wiki.setSameAs(osm.getID());
+        System.out.println(wiki.getSameAs() + "\t" + osm.getID());
         wiki.setURI("http://www.wikidata.org/wiki/" + wiki.getID());
         String wkt = wiki.getWKT();
         if (wiki.getWKT() != null) {
@@ -635,31 +617,52 @@ public class RDF extends DefaultHandler {
     }
 
     public static void main(String args[]) {
-        String rootPath = "F:/SmallApple/OSM-Wikidata_data/Result/";
-        //ForServer
-        //String rootPath = "/home/dsm/OSM-Wikidata/Result";
-        String OSMFilePath_Taiwan = rootPath + "OSMwithWiki_Taiwan.osm";
-        String OSMFilePath_China = rootPath + "OSMwithWiki_China.osm";
         RDF rdf = new RDF();
-        //rdf.readOSM(OSMFilePath_Taiwan);
-        //rdf.readOSM(OSMFilePath_China);
+
+        String OSMrootPath, RDFrootPath;
+        String OSMPath, RDFOSMPath, RDFWikiPath;
+        String area, Area;
+        String rdfOSMFile, rdfWikiFile;
+        String format, suffix;
+        //For PC
+        OSMrootPath = "F:/SmallApple/OSM-Wikidata_data/Result/";
+        RDFrootPath = "F:/SmallApple/OSM-Wikidata_data/Result_the end/";
+        //ForServer
+        OSMrootPath = "/home/dsm/OSM-Wikidata/Result/";
+        RDFrootPath = "/home/dsm/OSM-Wikidata/Result_the end/";
+
+        area = "taiwan";
+        Area = "Taiwan";
+        area = "china";
+        Area = "China";
+        area = "australia";
+        Area = "Australia";
+        OSMPath = OSMrootPath + "OSMwithWiki_" + Area + ".osm";
+        //rdf.readOSM(OSMPath);
+        OSMrootPath = "F:/SmallApple/OSM-Wikidata_data/other/";
+        RDFrootPath = "F:/SmallApple/OSM-Wikidata_data/Result_the end/";
+        rdf.RDF_OSM_file = RDFrootPath + "RDF_OSM_" + Area;
+        rdf.RDF_Wiki_file = RDFrootPath + "RDF_Wiki_" + Area;
+        rdf.NodePath = OSMrootPath + "NodePath_" + Area + ".txt";
+        rdf.WayPath = OSMrootPath + "WayPath_" + Area + ".txt";
+        rdf.RelationPath = OSMrootPath + "RelationPath_" + Area + ".txt";
+        rdf.readOSM(OSMPath);
+
         /*
-        String rootPath2 = "/home/dsm/OSM-Wikidata/Result_the end/";
-        String format = "Turtle";
-        String suffix = ".ttl";
-        String rdfOSMFile_Taiwan = rootPath2 + "RDF_OSM_Taiwan(node&&way).xml";
-        String rdfOSMFile_China = rootPath2 + "RDF_OSM_China(node).xml";
-        String rdfOSMFile_ChinaALL = rootPath2 + "RDF_OSM_ChinaALL" + suffix;
+        //合并中国台湾和中国大陆的数据模型
+        format = "Turtle";
+        suffix = ".ttl";
+        String rdfOSMFile_Taiwan = RDFrootPath + "RDF_OSM_Taiwan(node&&way).xml";
+        String rdfOSMFile_China = RDFrootPath + "RDF_OSM_China(node).xml";
+        String rdfOSMFile_ChinaALL = RDFrootPath + "RDF_OSM_ChinaALL" + suffix;
         Model model_OSM = rdf.readRDF2model(rdfOSMFile_Taiwan).union(readRDF2model(rdfOSMFile_China));
         writeSelectedRDF(model_OSM, rdfOSMFile_ChinaALL, format);
 
-        String rdfWikiFile_Taiwan = rootPath2 + "RDF_Wiki_Taiwan(node&&way).xml";
-        String rdfWikiFile_China = rootPath2 + "RDF_Wiki_China(node).xml";
-        String rdfWikiFile_ChinaALL = rootPath2 + "RDF_Wiki_ChinaALL" + suffix;
+        String rdfWikiFile_Taiwan = RDFrootPath + "RDF_Wiki_Taiwan(node&&way).xml";
+        String rdfWikiFile_China = RDFrootPath + "RDF_Wiki_China(node).xml";
+        String rdfWikiFile_ChinaALL = RDFrootPath + "RDF_Wiki_ChinaALL" + suffix;
         Model model_Wiki = rdf.readRDF2model(rdfWikiFile_Taiwan).union(readRDF2model(rdfWikiFile_China));
         writeSelectedRDF(model_Wiki, rdfWikiFile_ChinaALL, format);
         */
-        String OSMFilePath_Australia = "F:\\SmallApple\\OSM-Wikidata_data\\other\\OSMwithWiki_Australia.osm";
-        rdf.readOSM(OSMFilePath_Australia);
     }
 }

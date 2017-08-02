@@ -72,15 +72,12 @@ public class OSMInfoSave  extends DefaultHandler {
     private Integer saveNode = 0;
     private Integer saveWay = 0;
 
-    private String rootPath = "F:/SmallApple/OSM-Wikidata_data/Result/";
-    //ForServer
-    //private String rootPath = "/home/dsm/OSM-Wikidata/Result_the end/";
-    private static String NodewithWikiPath = "F:\\NodePath_Taiwan(Wiki).txt";
-    private static String WaywithWikiPath = "F:\\WayPath_Taiwan(Wiki).txt";
-    private static String RelationwithWikiPath = "F:\\RelationPath_Taiwan(Wiki).txt";
-    private static String NodePath = "F:\\NodePath_Taiwan.txt";
-    private static String WayPath = "F:\\WayPath_Taiwan.txt";
-    private static String RelationPath = "F:\\RelationPath_Taiwan.txt";
+    private static String NodewithWikiPath;
+    private static String WaywithWikiPath;
+    private static String RelationwithWikiPath;
+    private static String NodePath;
+    private static String WayPath;
+    private static String RelationPath;
 
     private static String SplitStr = "--";
 
@@ -186,6 +183,7 @@ public class OSMInfoSave  extends DefaultHandler {
          * 对relation操作
          */
         if (XML_TAG_Relation.equals(qName)) {
+            relation = new Relation();
             nodeIDs = new Vector<String>();
             wayIDs = new Vector<String>();
             relationIDs = new Vector<String>();
@@ -251,7 +249,7 @@ public class OSMInfoSave  extends DefaultHandler {
                     n.setName_en(kvcontents_En);
                     // 记录下存在wikidata链接的node的信息，备用
                     HandleFiles.WriteFile(NodewithWikiPath, n.getId() + SplitStr + n.getTag()
-                            + SplitStr + n.getLabel() + SplitStr + n.getName_zh() + SplitStr + n.getName_en()
+                            + SplitStr + n.getLabel() + SplitStr + n.getName_en() + SplitStr + n.getName_zh()
                             + SplitStr + n.getLon() + SplitStr + n.getLat()+ "\r\n");
                     System.out.println("Node Id: " + n.getId() + "\tName: " + kvcontents + "\tZh: " + kvcontents_Zh + "\tEn: " + kvcontents_En + "\tWiki: " + kvcontentsWiki);
                     n = null;
@@ -297,6 +295,8 @@ public class OSMInfoSave  extends DefaultHandler {
                 System.out.println(way.getPointids());
             }
             //记录下所有way的 ID、引用node信息，这是为了后面way、relation生成WKT格式数据做准备
+            way.setId(idcontents);
+            way.setPointids(pointids);
             HandleFiles.WriteFile(WayPath, way.getId() + SplitStr + way.getPointids() + "\r\n");
 
             curretntag = "";
@@ -331,6 +331,10 @@ public class OSMInfoSave  extends DefaultHandler {
                 System.out.println(relation.getnodeIDs() + ", " + relation.getwayIDs() + ", " + relation.getrelationIDs());
             }
             //记录下所有relation的 ID、引用node/way/relation信息，这是为了后面relation生成WKT格式数据做准备
+            relation.setId(idcontents);
+            relation.setnodeIDs(nodeIDs);
+            relation.setwayIDs(wayIDs);
+            relation.setrelationIDs(relationIDs);
             HandleFiles.WriteFile(RelationPath, relation.getId() + SplitStr +
                     relation.getnodeIDs() + SplitStr + relation.getwayIDs() + SplitStr + relation.getrelationIDs() + "\r\n");
 
@@ -447,46 +451,57 @@ public class OSMInfoSave  extends DefaultHandler {
     }
 
     public static void main(String[] args) {
+        String OSMrootPath, ResultrootPath;
+        String OSMPath, OSMwithWikiPath;
+        String nodePath, wayPath, relationPath;
+        String nodeWikiPath, wayWikiPath, relationWikiPath;
+        String area, Area;
+        area = "taiwan";
+        Area = "Taiwan";
+        area = "china";
+        Area = "China";
+        area = "australia";
+        Area = "Australia";
+
+        //For PC
+        OSMrootPath = "F:\\SmallApple\\OSM-Wikidata_data\\Data\\OSM\\";
+        ResultrootPath = "F:\\SmallApple\\OSM-Wikidata_data\\other\\";
         /*
-        String filePathTaiwan = "F:\\taiwan-latest.osm";
-        String encodeT = HandleFiles.getFileEncode(filePathTaiwan);
-        String filePathChina = "F:\\china-latest.osm";
-        String encodeC = HandleFiles.getFileEncode(filePathChina);
-        String resultPathChina = "F:\\OSMwithWiki_China.osm";
-        String resultPathTaiwan = "F:\\OSMwithWiki_Taiwan.osm";
-        String nodePathChina = "F:\\OSMNode_China.txt";
-        String nodePathTaiwan = "F:\\OSMNode_Taiwan.txt";
-        String wayPathChina = "F:\\OSMWay_China.txt";
-        String wayPathTaiwan = "F:\\OSMWay_Taiwan.txt";
-        String relationPathChina = "F:\\OSMRelation_China.txt";
-        String relationPathTaiwan = "F:\\OSMRelation_Taiwan.txt";
-*/
-        String rootPath = "F:\\SmallApple\\OSM-Wikidata_data\\Data\\OSM\\";
-        String filePath = rootPath + "australia-latest.osm";
-        String filePath2 = rootPath + "australia-latest2.osm";
-        String encode = HandleFiles.getFileEncode(filePath);
-        String rootPath2 = "F:\\SmallApple\\OSM-Wikidata_data\\other\\";
-        String resultPath = rootPath2 + "OSMwithWiki_Australia.osm";
-        String nodePath = rootPath2 + "OSMNode_Australia.txt";
-        String wayPath = rootPath2 + "OSMWay_Australia.txt";
-        String relationPath = rootPath2 + "OSMRelation_Australia.txt";
+        //For Server
+        OSMrootPath = "/home/dsm/OSM-Wikidata/Data/";
+        ResultrootPath = "/home/dsm/OSM-Wikidata/Result/" + Area + "/";
+        */
+        OSMPath = OSMrootPath + area  + "-latest.osm";
+        OSMwithWikiPath = ResultrootPath + "OSMwithWiki_" + Area + ".osm";
+        nodePath = ResultrootPath + "OSMNode_" + Area + ".txt";
+        wayPath = ResultrootPath + "OSMWay_" + Area + ".txt";
+        relationPath = ResultrootPath + "OSMRelation_" + Area + ".txt";
+        nodeWikiPath = ResultrootPath + "OSMNode(Wiki)_" + Area + ".txt";
+        wayWikiPath = ResultrootPath + "OSMWay(Wiki)_" + Area + ".txt";
+        relationWikiPath = ResultrootPath + "OSMRelation(Wiki)_" + Area + ".txt";
+
+        String encode = HandleFiles.getFileEncode(OSMPath);
 
         String key = "wikidata";
 
         OSMInfoSave save = new OSMInfoSave();
+        //保存一些中间文件，为WKT格式的生成做准备
+        save.NodewithWikiPath = nodeWikiPath;
+        save.WaywithWikiPath = wayWikiPath;
+        save.RelationwithWikiPath = relationWikiPath;
+        save.NodePath = nodePath;
+        save.WayPath = wayPath;
+        save.RelationPath = relationPath;
+        save.readOSM(OSMPath);
+        /*
+        //将包含Wikidata链接的OSM实体的OSM文件保存下来备用
         try {
-            //OSMFileSave(filePathTaiwan, encodeT, resultPathTaiwan, nodePathTaiwan, wayPathTaiwan, relationPathTaiwan , key);
-            //OSMFileSave(filePathChina, encodeC, resultPathChina, nodePathChina, wayPathChina, relationPathChina, key);
-            //OSMFileSave2(filePathTaiwan, encodeT, resultPathTaiwan, key);
-            //OSMFileSave2(filePathChina, encodeC, resultPathChina, key);
-            //OSMFileSave(filePath, encode, resultPath, nodePath, wayPath, relationPath, key);
-            //OSMFileSave2(filePath, encode, resultPath, key);
-            //save.readOSM(filePath);
-            OSMFileSave(filePath2, encode, resultPath, key);
+            OSMFileSave(filePath, encode, OSMwithWikiPath, key);
         } catch (IOException e) {
             e.printStackTrace();
         } catch (Exception e) {
             e.printStackTrace();
         }
+        */
     }
 }

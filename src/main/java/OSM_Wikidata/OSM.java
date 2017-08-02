@@ -16,8 +16,6 @@ import java.util.HashMap;
 
 import OSM.*;
 
-import static OSM_Wikidata.OSM_Wikidata.getURI;
-
 /**
  * Created by SmallApple on 2017/4/17.
  */

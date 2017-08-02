@@ -9,16 +9,16 @@ import java.util.HashMap;
  */
 public class OSM_Wikidata {
     static final String Context = "http://crowdgeokg.org/context.jsonld";
-    static ArrayList<String> Type = null;
-    static String ID = null;
-    static String IDType = null;
-    static String Label = null;
-    static String Name_zh = null;
-    static String Name_en = null;
-    static String WKT = null;
-    static String URI = null;
-    //static HashMap<String, ArrayList<String>> SameAs = null;
-    static String SameAs = null;
+    private ArrayList<String> Type = null;
+    private String ID = null;
+    private String IDType = null;
+    private String Label = null;
+    private String Name_zh = null;
+    private String Name_en = null;
+    private String WKT = null;
+    private String URI = null;
+    //private HashMap<String, ArrayList<String>> SameAs = null;
+    private String SameAs = null;
 
     public void setID(String ID) {
         this.ID = ID;
@@ -65,44 +65,44 @@ public class OSM_Wikidata {
         return Context;
     }
 
-    public static String getID() {
+    public String getID() {
         return ID;
     }
 
-    public static String getIDType() {
+    public String getIDType() {
         return IDType;
     }
 
-    public static ArrayList<String> getType() {
+    public ArrayList<String> getType() {
         return Type;
     }
 
-    public static String getLabel() {
+    public String getLabel() {
         return Label;
     }
 
-    public static String getName_zh() {
+    public String getName_zh() {
         return Name_zh;
     }
 
-    public static String getName_en() {
+    public String getName_en() {
         return Name_en;
     }
 
-    public static String getURI() {
+    public String getURI() {
         return URI;
     }
 
-    public static String getWKT() {
+    public String getWKT() {
         return WKT;
     }
 
     /*
-    public static HashMap<String, ArrayList<String>> getSameAs() {
+    public HashMap<String, ArrayList<String>> getSameAs() {
         return SameAs;
     }
     */
-    public static String getSameAs() {
+    public String getSameAs() {
         return SameAs;
     }
 
@@ -122,16 +122,17 @@ public class OSM_Wikidata {
     }
 
     public static ArrayList RDF_Generate() {
+        OSM_Wikidata OW = new OSM_Wikidata();
         ArrayList rdf = new ArrayList<String>();
         String context = "\"@context\": \"" + getContext() + "\"";
-        String id = "\"@id\": \"/" + getIDType() + "/" + getID() + "\"";
-        String type = "\"@type\": " + getType();
+        String id = "\"@id\": \"/" + OW.getIDType() + "/" + OW.getID() + "\"";
+        String type = "\"@type\": " + OW.getType();
         String name = "\"name\": [\n" +
-                "\r\n\r\t\r\t{\"@value\": \""+ getName_en() + "\", \"@language\": \"en\"},\r\n" +
-                "\r\t\r\t{\"@value\": \""+ getName_zh() + "\", \"@language\": \"zh\"},\r\n" +
+                "\r\n\r\t\r\t{\"@value\": \""+ OW.getName_en() + "\", \"@language\": \"en\"},\r\n" +
+                "\r\t\r\t{\"@value\": \""+ OW.getName_zh() + "\", \"@language\": \"zh\"},\r\n" +
                 "\r\t]";
-        String wkt = "\"asWKT\": \"" + getWKT() + "\"";
-        String uri = "\"uri\": " + getURI();
+        String wkt = "\"asWKT\": \"" + OW.getWKT() + "\"";
+        String uri = "\"uri\": " + OW.getURI();
         /*
         String s1 = getSameAs().keySet().toString();
         String s2 = new String(s1.substring(1, s1.length()-1));

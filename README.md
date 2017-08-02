@@ -8,8 +8,8 @@
 "RelationPath_Area.txt";    格式：relationID--引用的node ID集合--引用的way ID集合--引用的relation ID集合
 //(Wiki)这是因为存进nodelist、waylist、relationlist会堆栈溢出，所以就把需要的信息存进文件再读出来
 "NodePath_Area(Wiki).txt";      格式：nodeID--链接的wikidata ID--Name--Name_zh--Name_en--nodeLon--nodeLat
-"WayPath_Area(Wiki).txt";       格式：wayID--链接的wikidata ID--Name--Name_zh--Name_en--引用的node ID集合
-"RelationPath_Area(Wiki).txt";  格式：relationID--链接的wikidata ID--Name--Name_zh--Name_en--引用的node ID集合--引用的way ID集合--引用的relation ID集合
+"WayPath_Area(Wiki).txt";       格式：wayID--链接的wikidata ID--Name--Name_en--Name_zh--引用的node ID集合
+"RelationPath_Area(Wiki).txt";  格式：relationID--链接的wikidata ID--Name--Name_en--Name_zh--引用的node ID集合--引用的way ID集合--引用的relation ID集合
 
 运行/src/main/java/Wikidata下的HandleJSONFiles.java文件，可以得到Wikidata的entity中有OSM references的集合
 顺便运行一下得到中间文件"F:\\Wiki-Name_EN&&ID.csv"，为了记录下实体的英文名（因为OSM中有的实体没有英文名）
