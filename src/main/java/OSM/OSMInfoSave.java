@@ -58,7 +58,7 @@ public class OSMInfoSave  extends DefaultHandler {
     private Vector<String> wayIDs;
     private Vector<String> relationIDs;
 
-    private List<Nodes> nodeslist;
+    private List<Nodes> nodeslist = new ArrayList<Nodes>();
     private Way way;
     private Relation relation;
 
@@ -68,7 +68,8 @@ public class OSMInfoSave  extends DefaultHandler {
     private Integer plag_En = 0;
     //这tagN用于记录含有同一tag的节点数目，每次用完均要清零
     private Integer tagN = 0;
-    //saveNode、saveWay作为包含node、way的模型是否已存入文件的判断参数
+    private Integer tagIF = 0;
+    //saveNode;、saveWay作为包含node、way的模型是否已存入文件的判断参数
     private Integer saveNode = 0;
     private Integer saveWay = 0;
 
@@ -83,7 +84,6 @@ public class OSMInfoSave  extends DefaultHandler {
 
     @Override
     public void startDocument() throws SAXException {
-        nodeslist = new ArrayList<Nodes>();
         System.out.println("正在读取XML(OSM)文档，如果数据量过大需要一段时间，请耐心等待……");
     }
 
@@ -94,6 +94,47 @@ public class OSMInfoSave  extends DefaultHandler {
          * 对node进行操作
          */
         if (XML_TAG_NODE.equals(qName)) {
+
+            if(tagIF != 0) {
+                if(kvcontentsWiki != "") {
+                    /**
+                     * 之所以要进行这步工作，是因为可能多个node共有相同的tag，
+                     * 但是只有OSM文件中距离tag最近的node可以记录下tag的value&&key
+                     * 因此我们想办法将共有相同tag的node先存进nodelist，在endElement进行之后对他们进行统一setTag操作
+                     */
+                    for (int i = 0; i < tagN; i++) {
+                        Nodes n = new Nodes();
+                        n = nodeslist.get(i);
+                        n.setTag(kvcontentsWiki);
+                        n.setLabel(kvcontents);
+                        n.setName_zh(kvcontents_Zh);
+                        n.setName_en(kvcontents_En);
+                        // 记录下存在wikidata链接的node的信息，备用
+                        HandleFiles.WriteFile(NodewithWikiPath, n.getId() + SplitStr + n.getTag()
+                                + SplitStr + n.getLabel() + SplitStr + n.getName_en() + SplitStr + n.getName_zh()
+                                + SplitStr + n.getLon() + SplitStr + n.getLat()+ "\r\n");
+                        System.out.println("Node Id: " + n.getId() + "\tName: " + kvcontents + "\tZh: " + kvcontents_Zh + "\tEn: " + kvcontents_En + "\tWiki: " + kvcontentsWiki);
+                        n = null;
+                    }
+                }
+                //记录下所有node的 ID、经纬度信息，这是为了后面way、relation生成WKT格式数据做准备
+                for (int i = 0; i < tagN; i++) {
+                    Nodes n = new Nodes();
+                    n = nodeslist.get(i);
+                    HandleFiles.WriteFile(NodePath, n.getId() + SplitStr + n.getLon() + SplitStr + n.getLat() + "\r\n");
+                }
+                nodeslist.clear();
+                kvcontents = "";
+                kvcontents_En = "";
+                kvcontents_Zh = "";
+                kvcontentsWiki = "";
+                curretntag = "";
+                plag = 0;
+                plag_En = 0;
+                plag_Zh = 0;
+                tagN = 0;
+                tagIF = 0;
+            }
 
             if (attributes.getValue(XML_TAG_ID) != null && attributes.getValue(XML_TAG_ID) != "")
                 idcontents = attributes.getValue(XML_TAG_ID);
@@ -118,6 +159,7 @@ public class OSMInfoSave  extends DefaultHandler {
         }
 
         if (XML_TAG_NODE.equals(curretntag) && "tag".equals(qName)) {
+            tagIF = 1;
             String kcontents = attributes.getValue("k");
             String vcontents = attributes.getValue("v");
             if(plag == 0) {
@@ -143,6 +185,47 @@ public class OSMInfoSave  extends DefaultHandler {
          * 对way操作
          */
         if (XML_TAG_WAY.equals(qName)) {
+            // 先对前一个相邻的node进行操作
+            if(tagIF != 0) {
+                if(kvcontentsWiki != "") {
+                    /**
+                     * 之所以要进行这步工作，是因为可能多个node共有相同的tag，
+                     * 但是只有OSM文件中距离tag最近的node可以记录下tag的value&&key
+                     * 因此我们想办法将共有相同tag的node先存进nodelist，在endElement进行之后对他们进行统一setTag操作
+                     */
+                    for (int i = 0; i < tagN; i++) {
+                        Nodes n = new Nodes();
+                        n = nodeslist.get(i);
+                        n.setTag(kvcontentsWiki);
+                        n.setLabel(kvcontents);
+                        n.setName_zh(kvcontents_Zh);
+                        n.setName_en(kvcontents_En);
+                        // 记录下存在wikidata链接的node的信息，备用
+                        HandleFiles.WriteFile(NodewithWikiPath, n.getId() + SplitStr + n.getTag()
+                                + SplitStr + n.getLabel() + SplitStr + n.getName_en() + SplitStr + n.getName_zh()
+                                + SplitStr + n.getLon() + SplitStr + n.getLat()+ "\r\n");
+                        System.out.println("Node Id: " + n.getId() + "\tName: " + kvcontents + "\tZh: " + kvcontents_Zh + "\tEn: " + kvcontents_En + "\tWiki: " + kvcontentsWiki);
+                        n = null;
+                    }
+                }
+                //记录下所有node的 ID、经纬度信息，这是为了后面way、relation生成WKT格式数据做准备
+                for (int i = 0; i < tagN; i++) {
+                    Nodes n = new Nodes();
+                    n = nodeslist.get(i);
+                    HandleFiles.WriteFile(NodePath, n.getId() + SplitStr + n.getLon() + SplitStr + n.getLat() + "\r\n");
+                }
+                nodeslist.clear();
+                kvcontents = "";
+                kvcontents_En = "";
+                kvcontents_Zh = "";
+                kvcontentsWiki = "";
+                curretntag = "";
+                plag = 0;
+                plag_En = 0;
+                plag_Zh = 0;
+                tagN = 0;
+                tagIF = 0;
+            }
             way = new Way();
             pointids = new Vector<String>();
             points = new Vector<Nodes>();
@@ -234,44 +317,7 @@ public class OSMInfoSave  extends DefaultHandler {
     public void endElement(String uri, String localName, String qName) throws SAXException {
         //对node进行处理
         if (XML_TAG_NODE.equals(qName)) {
-            if(kvcontentsWiki != "") {
-                /**
-                 * 之所以要进行这步工作，是因为可能多个node共有相同的tag，
-                 * 但是只有OSM文件中距离tag最近的node可以记录下tag的value&&key
-                 * 因此我们想办法将共有相同tag的node先存进nodelist，在endElement进行之后对他们进行统一setTag操作
-                 */
-                for (int i = 0; i < tagN; i++) {
-                    Nodes n = new Nodes();
-                    n = nodeslist.get(i);
-                    n.setTag(kvcontentsWiki);
-                    n.setLabel(kvcontents);
-                    n.setName_zh(kvcontents_Zh);
-                    n.setName_en(kvcontents_En);
-                    // 记录下存在wikidata链接的node的信息，备用
-                    HandleFiles.WriteFile(NodewithWikiPath, n.getId() + SplitStr + n.getTag()
-                            + SplitStr + n.getLabel() + SplitStr + n.getName_en() + SplitStr + n.getName_zh()
-                            + SplitStr + n.getLon() + SplitStr + n.getLat()+ "\r\n");
-                    System.out.println("Node Id: " + n.getId() + "\tName: " + kvcontents + "\tZh: " + kvcontents_Zh + "\tEn: " + kvcontents_En + "\tWiki: " + kvcontentsWiki);
-                    n = null;
-                }
-            }
-            //记录下所有node的 ID、经纬度信息，这是为了后面way、relation生成WKT格式数据做准备
-            for (int i = 0; i < tagN; i++) {
-                Nodes n = new Nodes();
-                n = nodeslist.get(i);
-                HandleFiles.WriteFile(NodePath, n.getId() + SplitStr + n.getLon() + SplitStr + n.getLat() + "\r\n");
-            }
 
-            nodeslist.clear();
-            kvcontents = "";
-            kvcontents_En = "";
-            kvcontents_Zh = "";
-            kvcontentsWiki = "";
-            curretntag = "";
-            plag = 0;
-            plag_En = 0;
-            plag_Zh = 0;
-            tagN = 0;
         }
 
         //对way进行处理
@@ -413,7 +459,8 @@ public class OSMInfoSave  extends DefaultHandler {
             }
             while ((stringLine = reader.readLine()) != null) {
                 newstr = new String(stringLine.getBytes(encode), encode).trim();
-                for(int r = 0; r < 1; r++) { //OSM文件一大，node和way、relation必须分开跑，要不然way和relation的记录不对，奇葩的问题！
+                for(int r = 0; r < 3; r++) {
+                //for(int r = 0; r < 1; r++) { //OSM文件一大，node和way、relation必须分开跑，要不然way和relation的记录不对，奇葩的问题！
                 //for(int r = 1; r < 3; r++) {
                     if(newstr.indexOf("<" + feature[r] + " id=\"") >= 0) {
                         ArrayList strGroup = new ArrayList();
@@ -462,7 +509,8 @@ public class OSMInfoSave  extends DefaultHandler {
         Area = "China";
         area = "australia";
         Area = "Australia";
-
+        //area = "greece";
+        //Area = "Greece";
         //For PC
         OSMrootPath = "F:\\SmallApple\\OSM-Wikidata_data\\Data\\OSM\\";
         ResultrootPath = "F:\\SmallApple\\OSM-Wikidata_data\\other\\";
@@ -493,15 +541,15 @@ public class OSMInfoSave  extends DefaultHandler {
         save.WayPath = wayPath;
         save.RelationPath = relationPath;
         save.readOSM(OSMPath);
-        /*
+/*
         //将包含Wikidata链接的OSM实体的OSM文件保存下来备用
         try {
-            OSMFileSave(filePath, encode, OSMwithWikiPath, key);
+            OSMFileSave(OSMPath, encode, OSMwithWikiPath, key);
         } catch (IOException e) {
             e.printStackTrace();
         } catch (Exception e) {
             e.printStackTrace();
         }
-        */
+*/
     }
 }

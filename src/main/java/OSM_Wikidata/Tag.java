@@ -31,8 +31,9 @@ public class Tag extends DefaultHandler {
     private TreeMap tagNum_r;
     private TreeMap tagNum;
 
-    private static String TagQuantityNWR = "F:\\TagQuantityNWR.txt";
-    private static String TagQuantityALL = "F:\\TagQuantityALL.txt";
+    String rootPath = "F:/";
+    private String TagQuantityNWR = rootPath + "TagQuantityNWR.txt";
+    private String TagQuantityALL = rootPath + "TagQuantityALL.txt";
 
     //这tagN用于记录含有同一tag的节点/路径/关系数目，每次用完均要清零
     private Integer countn = 0;
@@ -246,12 +247,18 @@ public class Tag extends DefaultHandler {
     }
 
     public static void main(String[] args) {
-        String rootPath = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\other\\";
-        String OSMPath_Taiwan = "F:\\OSMwithWiki_Taiwan.osm";
-        String OSMPath_China = "F:\\OSMwithWiki_China.osm";
-        String OSMPath_Australia = rootPath + "OSMwithWiki_Australia.osm";
+        String rootPath, Area, OSMPath;
+        rootPath = "F:\\SmallApple\\OSM-Wikidata_data\\Result\\other\\";
+        Area = "Taiwan";
+        Area = "China";
+        Area = "Australia";
+        Area = "Greece";
+        OSMPath = rootPath + "OSMwithWiki_" + Area + ".osm";
+        String OSMPath_Taiwan = rootPath + "OSMwithWiki_Taiwan.osm";
+        String OSMPath_China = rootPath + "OSMwithWiki_China.osm";
         Tag tag = new Tag();
-        tag.readOSM(OSMPath_Australia);
+        tag.readOSM(OSMPath);
+//
 //        tag.readOSM(OSMPath_Taiwan);
 //        tag.readIF = 1;
 //        tag.readOSM(OSMPath_China);

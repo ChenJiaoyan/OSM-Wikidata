@@ -3,6 +3,14 @@ package OSM_Wikidata;
 import OSM.Nodes;
 import OSM.Relation;
 import OSM.Way;
+import org.apache.jena.riot.JsonLDWriteContext;
+import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.riot.RDFFormat;
+import org.apache.jena.riot.WriterDatasetRIOT;
+import org.apache.jena.riot.system.RiotLib;
+import org.apache.jena.sparql.util.Context;
+import org.apache.jena.riot.Lang;
+import org.apache.jena.riot.*;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.util.FileManager;
@@ -12,6 +20,10 @@ import org.apache.jena.vocabulary.VCARD;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
+import org.apache.jena.riot.JsonLDWriteContext;
+import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.riot.RDFFormat;
+import org.apache.jena.riot.WriterDatasetRIOT;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
@@ -75,6 +87,7 @@ public class RDF extends DefaultHandler {
     private Integer plag_En = 0;
     //这tagN用于记录含有同一tag的节点数目，每次用完均要清零
     private Integer tagN = 0;
+    private Integer tagIF = 0;
     //saveNode、saveWay作为包含node、way的模型是否已存入文件的判断参数
     private Integer saveNode = 0;
     private Integer saveWay = 0;
@@ -105,6 +118,40 @@ public class RDF extends DefaultHandler {
          */
         if (XML_TAG_NODE.equals(qName)) {
 
+            if(tagIF != 0) {
+                if(kvcontentsWiki != "") {
+                    /**
+                     * 之所以要进行这步工作，是因为可能多个node共有相同的tag，
+                     * 但是只有OSM文件中距离tag最近的node可以记录下tag的value&&key
+                     * 因此我们想办法将共有相同tag的node先存进nodelist，在endElement进行之后对他们进行统一setTag操作
+                     */
+                    for (int i = 0; i < tagN; i++) {
+                        Nodes n = new Nodes();
+                        n = nodeslist.get(i);
+                        n.setTag(kvcontentsWiki);
+                        n.setLabel(kvcontents);
+                        n.setName_zh(kvcontents_Zh);
+                        n.setName_en(kvcontents_En);
+                        // 将存在wikidata链接的node存进model_OSM
+                        model_OSM = RDF_OSM(model_OSM, node2OSM(n));
+                        model_Wiki = RDF_Wiki(model_Wiki, node2OSM(n));
+                        System.out.println("Node Id: " + n.getId() + "\tName: " + kvcontents + "\tZh: " + kvcontents_Zh + "\tEn: " + kvcontents_En + "\tWiki: " + kvcontentsWiki);
+                        n = null;
+                    }
+                }
+                nodeslist.clear();
+                kvcontents = "";
+                kvcontents_En = "";
+                kvcontents_Zh = "";
+                kvcontentsWiki = "";
+                curretntag = "";
+                plag = 0;
+                plag_En = 0;
+                plag_Zh = 0;
+                tagN = 0;
+                tagIF = 0;
+            }
+
             if (attributes.getValue(XML_TAG_ID) != null && attributes.getValue(XML_TAG_ID) != "")
                 idcontents = attributes.getValue(XML_TAG_ID);
             else
@@ -128,6 +175,7 @@ public class RDF extends DefaultHandler {
         }
 
         if (XML_TAG_NODE.equals(curretntag) && "tag".equals(qName)) {
+            tagIF = 1;
             String kcontents = attributes.getValue("k");
             String vcontents = attributes.getValue("v");
             if(plag == 0) {
@@ -155,10 +203,45 @@ public class RDF extends DefaultHandler {
         if (XML_TAG_WAY.equals(qName)) {
             // 存model（node）
             if(saveNode == 0) {
+                if(tagIF != 0) {
+                    if(kvcontentsWiki != "") {
+                        /**
+                         * 之所以要进行这步工作，是因为可能多个node共有相同的tag，
+                         * 但是只有OSM文件中距离tag最近的node可以记录下tag的value&&key
+                         * 因此我们想办法将共有相同tag的node先存进nodelist，在endElement进行之后对他们进行统一setTag操作
+                         */
+                        for (int i = 0; i < tagN; i++) {
+                            Nodes n = new Nodes();
+                            n = nodeslist.get(i);
+                            n.setTag(kvcontentsWiki);
+                            n.setLabel(kvcontents);
+                            n.setName_zh(kvcontents_Zh);
+                            n.setName_en(kvcontents_En);
+                            // 将存在wikidata链接的node存进model_OSM
+                            model_OSM = RDF_OSM(model_OSM, node2OSM(n));
+                            model_Wiki = RDF_Wiki(model_Wiki, node2OSM(n));
+                            System.out.println("Node Id: " + n.getId() + "\tName: " + kvcontents + "\tZh: " + kvcontents_Zh + "\tEn: " + kvcontents_En + "\tWiki: " + kvcontentsWiki);
+                            n = null;
+                        }
+                    }
+                    nodeslist.clear();
+                    kvcontents = "";
+                    kvcontents_En = "";
+                    kvcontents_Zh = "";
+                    kvcontentsWiki = "";
+                    curretntag = "";
+                    plag = 0;
+                    plag_En = 0;
+                    plag_Zh = 0;
+                    tagN = 0;
+                    tagIF = 0;
+                }
                 writeSelectedRDF(model_OSM, RDF_OSM_file + "_N.xml", "RDF/XML-ABBREV");
                 writeSelectedRDF(model_OSM, RDF_OSM_file + "_N.ttl", "Turtle");
+                //writeSelectedRDF(model_OSM, RDF_OSM_file + "_N.json", "JSONLD");
                 writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_N.xml", "RDF/XML-ABBREV");
                 writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_N.ttl", "Turtle");
+                //writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_N.json", "JSONLD");
                 saveNode = 1;
             }
             way = new Way();
@@ -205,8 +288,10 @@ public class RDF extends DefaultHandler {
             if(saveWay == 0) {
                 writeSelectedRDF(model_OSM, RDF_OSM_file + "_W.xml", "RDF/XML-ABBREV");
                 writeSelectedRDF(model_OSM, RDF_OSM_file + "_W.ttl", "Turtle");
+                //writeSelectedRDF(model_OSM, RDF_OSM_file + "_W.json", "JSONLD");
                 writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_W.xml", "RDF/XML-ABBREV");
                 writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_W.ttl", "Turtle");
+                //writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_W.json", "JSONLD");
                 saveWay = 1;
             }
             nodeIDs = new Vector<String>();
@@ -259,37 +344,7 @@ public class RDF extends DefaultHandler {
     public void endElement(String uri, String localName, String qName) throws SAXException {
         //对node进行处理
         if (XML_TAG_NODE.equals(qName)) {
-            if(kvcontentsWiki != "") {
-                /**
-                 * 之所以要进行这步工作，是因为可能多个node共有相同的tag，
-                 * 但是只有OSM文件中距离tag最近的node可以记录下tag的value&&key
-                 * 因此我们想办法将共有相同tag的node先存进nodelist，在endElement进行之后对他们进行统一setTag操作
-                 */
-                for (int i = 0; i < tagN; i++) {
-                    Nodes n = new Nodes();
-                    n = nodeslist.get(i);
-                    n.setTag(kvcontentsWiki);
-                    n.setLabel(kvcontents);
-                    n.setName_zh(kvcontents_Zh);
-                    n.setName_en(kvcontents_En);
-                    // 将存在wikidata链接的node存进model_OSM
-                    model_OSM = RDF_OSM(model_OSM, node2OSM(n));
-                    model_Wiki = RDF_Wiki(model_Wiki, node2OSM(n));
-                    System.out.println("Node Id: " + n.getId() + "\tName: " + kvcontents + "\tZh: " + kvcontents_Zh + "\tEn: " + kvcontents_En + "\tWiki: " + kvcontentsWiki);
-                    n = null;
-                }
-            }
 
-            nodeslist.clear();
-            kvcontents = "";
-            kvcontents_En = "";
-            kvcontents_Zh = "";
-            kvcontentsWiki = "";
-            curretntag = "";
-            plag = 0;
-            plag_En = 0;
-            plag_Zh = 0;
-            tagN = 0;
         }
 
         //对way进行处理
@@ -364,8 +419,10 @@ public class RDF extends DefaultHandler {
     public void endDocument() throws SAXException {
         writeSelectedRDF(model_OSM, RDF_OSM_file + "_R.xml", "RDF/XML-ABBREV");
         writeSelectedRDF(model_OSM, RDF_OSM_file + "_R.ttl", "Turtle");
+        //writeSelectedRDF(model_OSM, RDF_OSM_file + "_R.json", "JSONLD");
         writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_R.xml", "RDF/XML-ABBREV");
         writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_R.ttl", "Turtle");
+        //writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_R.json", "JSONLD");
         System.out.println("Reading OSM/XML file is done!");
     }
 
@@ -577,6 +634,16 @@ public class RDF extends DefaultHandler {
         model.write(out, "RDF/XML-ABBREV");
     }
 
+    public static void writeRDFJSON(Model model, String RDFfile) {
+        FileWriter out = null;
+        try {
+            out = new FileWriter(RDFfile);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        RDFDataMgr.write(out, model, RDFFormat.JSONLD_FLATTEN_PRETTY);
+    }
+
     public static void writeSelectedRDF(Model model, String RDFfile, String format) {
         // 这个函数是传入model，根据选择的输出format，生成RDFfile
         File file = new File(RDFfile);
@@ -623,17 +690,19 @@ public class RDF extends DefaultHandler {
         Area = "China";
         area = "australia";
         Area = "Australia";
+        //area = "greece";
+        //Area = "Greece";
         //For PC
-        OSMrootPath = "F:/SmallApple/OSM-Wikidata_data/Result/";
-        RDFrootPath = "F:/SmallApple/OSM-Wikidata_data/Result_the end/";
-        OSMrootPath = "F:/SmallApple/OSM-Wikidata_data/other/";
-        RDFrootPath = "F:/SmallApple/OSM-Wikidata_data/other/";
+        OSMrootPath = "F:/SmallApple/OSM-Wikidata_data/Result/" + Area + "/";
+        RDFrootPath = "F:/SmallApple/OSM-Wikidata_data/Result_the end/" + Area + "/";
+//        OSMrootPath = "F:/SmallApple/OSM-Wikidata_data/other/";
+//        RDFrootPath = "F:/SmallApple/OSM-Wikidata_data/other/";
 
-        /*
+
         //ForServer
         OSMrootPath = "/home/dsm/OSM-Wikidata/Result/" + Area + "/";
         RDFrootPath = "/home/dsm/OSM-Wikidata/Result_the end/" + Area + "/";
-        */
+
         OSMPath = OSMrootPath + "OSMwithWiki_" + Area + ".osm";
         rdf.RDF_OSM_file = RDFrootPath + "RDF_OSM_" + Area;
         rdf.RDF_Wiki_file = RDFrootPath + "RDF_Wiki_" + Area;
@@ -658,5 +727,27 @@ public class RDF extends DefaultHandler {
         Model model_Wiki = rdf.readRDF2model(rdfWikiFile_Taiwan).union(readRDF2model(rdfWikiFile_China));
         writeSelectedRDF(model_Wiki, rdfWikiFile_ChinaALL, format);
         */
+/*
+        //将中国区域的数据模型输出成JOSNLD格式，服务器报错org.apache.jena.shared.NoWriterForLangException: writer not found：JSONLD
+        String rootPath = "F:\\SmallApple\\OSM-Wikidata_data\\Result_the end\\";
+        rootPath = "/home/dsm/OSM-Wikidata/Result_the end/China/";
+        format = "RDF/JSON";
+        suffix = ".rj";
+        format = "JSON-LD";
+        suffix = ".jsonld";
+        Model model_OSM = rdf.readRDF2model(rootPath + "RDF_OSM_ChinaALL.xml");
+        Model model_Wiki = rdf.readRDF2model(rootPath + "RDF_Wiki_ChinaALL.xml");
+        //Model model_OSM = RDFDataMgr.loadModel(rootPath + "RDF_OSM_ChinaALL.xml");
+        //Model model_Wiki = RDFDataMgr.loadModel(rootPath + "RDF_Wiki_ChinaALL.xml");
+        model_OSM.write(System.out, "JSON-LD");
+        writeRDFJSON(model_OSM, rootPath + "RDF_OSM_ChinaALL.json");
+        writeRDFJSON(model_Wiki, rootPath + "RDF_Wiki_ChinaALL.json");
+        //writeSelectedRDF(model_OSM, rootPath + "RDF_OSM_ChinaALL" + suffix, format);
+        //writeSelectedRDF(model_Wiki, rootPath + "RDF_Wiki_ChinaALL" + suffix, format);
+*/
+/*
+        Model model = rdf.readRDF2model("F:/RDF_OSM_Taiwan(node).xml");
+        writeSelectedRDF(model, "F:/test.json", "JSON-LD");
+*/
     }
 }
