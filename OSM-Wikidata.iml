@@ -104,9 +104,21 @@
         <jarDirectory url="file://E:/apache-jena-3.3.0/lib" recursive="false" />
       </library>
     </orderEntry>
+    <orderEntry type="library" name="Maven: com.github.jsonld-java:jsonld-java-clerezza:0.10.0" level="project" />
+    <orderEntry type="library" name="Maven: com.github.jsonld-java:jsonld-java:0.10.0" level="project" />
+    <orderEntry type="library" name="Maven: com.fasterxml.jackson.core:jackson-core:2.8.6" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.httpcomponents:httpcore-osgi:4.4.6" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.httpcomponents:httpcore-nio:4.4.6" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.clerezza:rdf.core:0.14" level="project" />
+    <orderEntry type="library" name="Maven: org.osgi:org.osgi.core:4.3.1" level="project" />
+    <orderEntry type="library" name="Maven: org.osgi:org.osgi.compendium:4.3.1" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.felix:org.apache.felix.scr.ds-annotations:1.2.4" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.clerezza:utils:0.2" level="project" />
+    <orderEntry type="library" name="Maven: org.wymiwyg:wymiwyg-commons-core:0.7.6" level="project" />
+    <orderEntry type="library" name="Maven: commons-logging:commons-logging-api:1.1" level="project" />
+    <orderEntry type="library" name="Maven: javax.activation:activation:1.1" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.felix:org.apache.felix.scr.annotations:1.9.12" level="project" />
     <orderEntry type="library" name="Maven: com.github.jsonld-java:jsonld-java-jena:0.4.1" level="project" />
-    <orderEntry type="library" name="Maven: com.github.jsonld-java:jsonld-java:0.4.1" level="project" />
-    <orderEntry type="library" name="Maven: com.fasterxml.jackson.core:jackson-core:2.3.3" level="project" />
     <orderEntry type="library" name="Maven: xerces:xercesImpl:2.11.0" level="project" />
     <orderEntry type="library" name="Maven: xml-apis:xml-apis:1.4.01" level="project" />
     <orderEntry type="library" name="Maven: org.apache.clerezza.ext:org.apache.jena.jena-arq:2.11.1_1" level="project" />

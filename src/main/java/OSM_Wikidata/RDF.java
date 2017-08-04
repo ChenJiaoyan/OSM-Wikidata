@@ -8,22 +8,21 @@ import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.riot.WriterDatasetRIOT;
 import org.apache.jena.riot.system.RiotLib;
-import org.apache.jena.sparql.util.Context;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.*;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.util.FileManager;
+import com.github.jsonldjava.core.JsonLdOptions;
+import org.apache.jena.sparql.core.DatasetGraph;
+import org.apache.jena.sparql.util.Context;
+import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.vocabulary.OWL;
 import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.VCARD;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
-import org.apache.jena.riot.JsonLDWriteContext;
-import org.apache.jena.riot.RDFDataMgr;
-import org.apache.jena.riot.RDFFormat;
-import org.apache.jena.riot.WriterDatasetRIOT;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
@@ -236,12 +235,12 @@ public class RDF extends DefaultHandler {
                     tagN = 0;
                     tagIF = 0;
                 }
-                writeSelectedRDF(model_OSM, RDF_OSM_file + "_N.xml", "RDF/XML-ABBREV");
-                writeSelectedRDF(model_OSM, RDF_OSM_file + "_N.ttl", "Turtle");
-                //writeSelectedRDF(model_OSM, RDF_OSM_file + "_N.json", "JSONLD");
-                writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_N.xml", "RDF/XML-ABBREV");
-                writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_N.ttl", "Turtle");
-                //writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_N.json", "JSONLD");
+                //writeSelectedRDF(model_OSM, RDF_OSM_file + "_N.xml", "RDF/XML-ABBREV");
+                //writeSelectedRDF(model_OSM, RDF_OSM_file + "_N.ttl", "Turtle");
+                writeSelectedRDF(model_OSM, RDF_OSM_file + "_N.json", "JSONLD");
+                //writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_N.xml", "RDF/XML-ABBREV");
+                //writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_N.ttl", "Turtle");
+                writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_N.json", "JSONLD");
                 saveNode = 1;
             }
             way = new Way();
@@ -286,12 +285,12 @@ public class RDF extends DefaultHandler {
         if (XML_TAG_Relation.equals(qName)) {
             // 存model（way）
             if(saveWay == 0) {
-                writeSelectedRDF(model_OSM, RDF_OSM_file + "_W.xml", "RDF/XML-ABBREV");
-                writeSelectedRDF(model_OSM, RDF_OSM_file + "_W.ttl", "Turtle");
-                //writeSelectedRDF(model_OSM, RDF_OSM_file + "_W.json", "JSONLD");
-                writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_W.xml", "RDF/XML-ABBREV");
-                writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_W.ttl", "Turtle");
-                //writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_W.json", "JSONLD");
+                //writeSelectedRDF(model_OSM, RDF_OSM_file + "_W.xml", "RDF/XML-ABBREV");
+                //writeSelectedRDF(model_OSM, RDF_OSM_file + "_W.ttl", "Turtle");
+                writeSelectedRDF(model_OSM, RDF_OSM_file + "_W.json", "JSONLD");
+                //writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_W.xml", "RDF/XML-ABBREV");
+                //writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_W.ttl", "Turtle");
+                writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_W.json", "JSONLD");
                 saveWay = 1;
             }
             nodeIDs = new Vector<String>();
@@ -417,12 +416,12 @@ public class RDF extends DefaultHandler {
 
     @Override
     public void endDocument() throws SAXException {
-        writeSelectedRDF(model_OSM, RDF_OSM_file + "_R.xml", "RDF/XML-ABBREV");
-        writeSelectedRDF(model_OSM, RDF_OSM_file + "_R.ttl", "Turtle");
-        //writeSelectedRDF(model_OSM, RDF_OSM_file + "_R.json", "JSONLD");
-        writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_R.xml", "RDF/XML-ABBREV");
-        writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_R.ttl", "Turtle");
-        //writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_R.json", "JSONLD");
+        //writeSelectedRDF(model_OSM, RDF_OSM_file + "_R.xml", "RDF/XML-ABBREV");
+        //writeSelectedRDF(model_OSM, RDF_OSM_file + "_R.ttl", "Turtle");
+        writeSelectedRDF(model_OSM, RDF_OSM_file + "_R.json", "JSONLD");
+        //writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_R.xml", "RDF/XML-ABBREV");
+        //writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_R.ttl", "Turtle");
+        writeSelectedRDF(model_Wiki, RDF_Wiki_file + "_R.json", "JSONLD");
         System.out.println("Reading OSM/XML file is done!");
     }
 
@@ -495,7 +494,6 @@ public class RDF extends DefaultHandler {
                     .addProperty(RDFS.subClassOf, osm.getType().get(0))
                     .addProperty(org.apache.jena.vocabulary.RDF.type, osm.OSM_Type)
                     .addProperty(VCARD.UID, osm.getIDType() + "/" + osm.getID())
-                    //.addProperty()
             ;
             if ( osm.getName_en() != "" && osm.getName_en() != null ) {
                 rdfmodel.createResource(osm.getURI())
@@ -698,7 +696,6 @@ public class RDF extends DefaultHandler {
 //        OSMrootPath = "F:/SmallApple/OSM-Wikidata_data/other/";
 //        RDFrootPath = "F:/SmallApple/OSM-Wikidata_data/other/";
 
-
         //ForServer
         OSMrootPath = "/home/dsm/OSM-Wikidata/Result/" + Area + "/";
         RDFrootPath = "/home/dsm/OSM-Wikidata/Result_the end/" + Area + "/";
@@ -727,7 +724,8 @@ public class RDF extends DefaultHandler {
         Model model_Wiki = rdf.readRDF2model(rdfWikiFile_Taiwan).union(readRDF2model(rdfWikiFile_China));
         writeSelectedRDF(model_Wiki, rdfWikiFile_ChinaALL, format);
         */
-/*
+
+        /*
         //将中国区域的数据模型输出成JOSNLD格式，服务器报错org.apache.jena.shared.NoWriterForLangException: writer not found：JSONLD
         String rootPath = "F:\\SmallApple\\OSM-Wikidata_data\\Result_the end\\";
         rootPath = "/home/dsm/OSM-Wikidata/Result_the end/China/";
@@ -739,7 +737,7 @@ public class RDF extends DefaultHandler {
         Model model_Wiki = rdf.readRDF2model(rootPath + "RDF_Wiki_ChinaALL.xml");
         //Model model_OSM = RDFDataMgr.loadModel(rootPath + "RDF_OSM_ChinaALL.xml");
         //Model model_Wiki = RDFDataMgr.loadModel(rootPath + "RDF_Wiki_ChinaALL.xml");
-        model_OSM.write(System.out, "JSON-LD");
+        //model_OSM.write(System.out, "JSON-LD");
         writeRDFJSON(model_OSM, rootPath + "RDF_OSM_ChinaALL.json");
         writeRDFJSON(model_Wiki, rootPath + "RDF_Wiki_ChinaALL.json");
         //writeSelectedRDF(model_OSM, rootPath + "RDF_OSM_ChinaALL" + suffix, format);
